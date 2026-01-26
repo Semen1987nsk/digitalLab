@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+// Пакет данных от датчика
+// Компилируется через nanopb для ESP32
+message SensorPacket {
+  uint32 timestamp_ms = 1;
+  
+  // Расстояние (мм)
+  float distance_mm = 2;
+  
+  // Электричество
+  float voltage_v = 3;
+  float current_a = 4;
+  float power_w = 5;
+  
+  // Окружающая среда
+  float temperature_c = 6;
+  float pressure_pa = 7;
+  float humidity_pct = 8;
+  
+  // Движение (м/с²)
+  float accel_x = 9;
+  float accel_y = 10;
+  float accel_z = 11;
+  
+  // Гироскоп (°/с)
+  float gyro_x = 12;
+  float gyro_y = 13;
+  float gyro_z = 14;
+  
+  // Термопара
+  float thermocouple_c = 15;
+  
+  // Битовая маска валидных полей
+  uint32 valid_flags = 16;
+}
+
+// Информация об устройстве
+message DeviceInfo {
+  string firmware_version = 1;
+  string hardware_version = 2;
+  uint32 battery_percent = 3;
+  repeated string enabled_sensors = 4;
+  uint32 sample_rate_hz = 5;
+  bool is_measuring = 6;
+  uint32 buffer_count = 7;
+}
+
+// Команды от приложения к датчику
+message Command {
+  enum Type {
+    START = 0;
+    STOP = 1;
+    CALIBRATE = 2;
+    SET_SAMPLE_RATE = 3;
+    GET_INFO = 4;
+    CLEAR_BUFFER = 5;
+    OTA_BEGIN = 10;
+    OTA_CHUNK = 11;
+    OTA_END = 12;
+  }
+  
+  Type type = 1;
+  
+  // Для SET_SAMPLE_RATE
+  uint32 sample_rate_hz = 2;
+  
+  // Для CALIBRATE
+  string sensor_id = 3;
+  
+  // Для OTA
+  bytes ota_data = 4;
+  uint32 ota_offset = 5;
+  uint32 ota_total_size = 6;
+  uint32 ota_crc32 = 7;
+}
+
+// Ответ на команду
+message CommandResponse {
+  bool success = 1;
+  string message = 2;
+  DeviceInfo device_info = 3;
+}

@@ -1,0 +1,57 @@
+name: digital_lab
+description: Цифровая лаборатория по физике для школ России
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  flutter_riverpod: ^2.4.0
+  riverpod_annotation: ^2.3.0
+  
+  # BLE & USB
+  flutter_blue_plus: ^1.31.0
+  usb_serial: ^0.5.0
+  
+  # Local Database
+  drift: ^2.14.0
+  sqlite3_flutter_libs: ^0.5.18
+  path_provider: ^2.1.0
+  path: ^1.8.0
+  
+  # Charts
+  fl_chart: ^0.65.0
+  
+  # PDF & Export
+  pdf: ^3.10.0
+  printing: ^5.12.0
+  csv: ^5.1.0
+  
+  # Protobuf
+  protobuf: ^3.1.0
+  
+  # Utils
+  equatable: ^2.0.5
+  intl: ^0.18.0
+  collection: ^1.18.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  riverpod_generator: ^2.3.0
+  build_runner: ^2.4.0
+  drift_dev: ^2.14.0
+  mockito: ^5.4.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/
+    - assets/lab_works/

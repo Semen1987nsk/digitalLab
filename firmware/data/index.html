@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Цифровая Лаборатория</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --surface: #1e1e1e;
+            --surface-light: #2d2d2d;
+            --primary: #4CAF50;
+            --text: #ffffff;
+            --text-secondary: #b3b3b3;
+            --distance: #00BCD4;
+            --temperature: #F44336;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--surface);
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .big-value {
+            text-align: center;
+            padding: 40px 20px;
+            background: var(--surface);
+            border-radius: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .big-value .label {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        
+        .big-value .value {
+            font-size: 72px;
+            font-weight: bold;
+            color: var(--distance);
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .big-value .unit {
+            font-size: 32px;
+            color: var(--text-secondary);
+            margin-left: 8px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 16px 24px;
+            font-size: 18px;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--surface-light);
+            color: var(--text);
+        }
+        
+        .btn-danger {
+            background: #F44336;
+            color: white;
+        }
+        
+        .chart-container {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            height: 300px;
+        }
+        
+        #chart {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .info-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .info-card .label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        
+        .info-card .value {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .info-card.temperature .value {
+            color: var(--temperature);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔬 Цифровая Лаборатория</h1>
+        <div class="status">
+            <div class="status-dot"></div>
+            <span id="status-text">Подключено</span>
+        </div>
+    </div>
+    
+    <div class="big-value">
+        <div class="label">Расстояние</div>
+        <div>
+            <span class="value" id="distance-value">---</span>
+            <span class="unit">мм</span>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button class="btn btn-primary" id="btn-start" onclick="startMeasurement()">
+            ▶ Старт
+        </button>
+        <button class="btn btn-danger" id="btn-stop" onclick="stopMeasurement()" style="display:none">
+            ■ Стоп
+        </button>
+        <button class="btn btn-secondary" onclick="calibrate()">
+            ⚙ Ноль
+        </button>
+    </div>
+    
+    <div class="chart-container">
+        <canvas id="chart"></canvas>
+    </div>
+    
+    <div class="info-grid">
+        <div class="info-card temperature">
+            <div class="label">Температура</div>
+            <div class="value" id="temp-value">--.- °C</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Измерений</div>
+            <div class="value" id="count-value">0</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Частота</div>
+            <div class="value" id="rate-value">10 Гц</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Версия</div>
+            <div class="value" id="version-value">1.0.0</div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Данные для графика
+        const chartData = {
+            labels: [],
+            datasets: [{
+                label: 'Расстояние, мм',
+                data: [],
+                borderColor: '#00BCD4',
+                backgroundColor: 'rgba(0, 188, 212, 0.1)',
+                fill: true,
+                tension: 0.2,
+                pointRadius: 0,
+            }]
+        };
+        
+        // Инициализация графика
+        const ctx = document.getElementById('chart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                scales: {
+                    x: {
+                        display: true,
+                        title: { display: true, text: 'Время, с', color: '#b3b3b3' },
+                        ticks: { color: '#b3b3b3' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    },
+                    y: {
+                        display: true,
+                        title: { display: true, text: 'Расстояние, мм', color: '#b3b3b3' },
+                        ticks: { color: '#b3b3b3' },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+        
+        let measuring = false;
+        let measurementCount = 0;
+        let startTime = 0;
+        
+        // Получение данных с датчика
+        async function fetchData() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                
+                document.getElementById('distance-value').textContent = 
+                    data.distance_mm.toFixed(1);
+                document.getElementById('temp-value').textContent = 
+                    data.temperature_c.toFixed(1) + ' °C';
+                document.getElementById('count-value').textContent = 
+                    data.buffer_count;
+                
+                if (measuring) {
+                    const time = (Date.now() - startTime) / 1000;
+                    
+                    // Добавляем точку на график
+                    chartData.labels.push(time.toFixed(1));
+                    chartData.datasets[0].data.push(data.distance_mm);
+                    
+                    // Ограничиваем количество точек (LTTB-подобное прореживание)
+                    if (chartData.labels.length > 200) {
+                        chartData.labels.shift();
+                        chartData.datasets[0].data.shift();
+                    }
+                    
+                    chart.update('none');
+                    measurementCount++;
+                }
+            } catch (e) {
+                document.getElementById('status-text').textContent = 'Ошибка связи';
+            }
+        }
+        
+        function startMeasurement() {
+            measuring = true;
+            startTime = Date.now();
+            measurementCount = 0;
+            chartData.labels = [];
+            chartData.datasets[0].data = [];
+            
+            document.getElementById('btn-start').style.display = 'none';
+            document.getElementById('btn-stop').style.display = 'block';
+            
+            fetch('/api/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: 'start' })
+            });
+        }
+        
+        function stopMeasurement() {
+            measuring = false;
+            
+            document.getElementById('btn-start').style.display = 'block';
+            document.getElementById('btn-stop').style.display = 'none';
+            
+            fetch('/api/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: 'stop' })
+            });
+        }
+        
+        function calibrate() {
+            fetch('/api/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: 'calibrate', sensor: 'distance' })
+            });
+        }
+        
+        // Опрос каждые 100мс
+        setInterval(fetchData, 100);
+        fetchData();
+    </script>
+</body>
+</html>

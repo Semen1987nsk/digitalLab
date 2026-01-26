@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Определение датчика V802</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 24px; color: #4CAF50; }
+        .card {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .card h2 { color: #00BCD4; margin-bottom: 16px; }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px;
+        }
+        button:hover { background: #45a049; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        button.danger { background: #f44336; }
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 12px 0;
+            font-family: monospace;
+        }
+        .status.success { background: #1b4332; }
+        .status.error { background: #442222; }
+        .status.info { background: #1a3a5c; }
+        #output {
+            background: #0f0f23;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 16px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .data-line { color: #00ff88; }
+        .error-line { color: #ff6b6b; }
+        .info-line { color: #74b9ff; }
+        select {
+            background: #16213e;
+            color: white;
+            border: 1px solid #444;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 8px;
+            margin: 8px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .stat {
+            background: #0f3460;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value { font-size: 24px; font-weight: bold; color: #4CAF50; }
+        .stat-label { font-size: 12px; color: #888; }
+        .warning {
+            background: #5c4813;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Определение датчика V802</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Важно:</strong> Этот файл нужно открыть в браузере <b>Chrome/Edge</b> на вашем компьютере 
+            (не в GitHub Codespaces). Web Serial API работает только локально.
+        </div>
+        
+        <div class="card">
+            <h2>1. Подключение к датчику</h2>
+            <p>Подключите датчик V802 к USB и нажмите кнопку:</p>
+            <br>
+            <button id="connectBtn" onclick="connect()">🔌 Подключить датчик</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled class="danger">❌ Отключить</button>
+            
+            <div id="connectionStatus" class="status info">Датчик не подключён</div>
+            
+            <label>Скорость порта: </label>
+            <select id="baudRate">
+                <option value="9600">9600</option>
+                <option value="19200">19200</option>
+                <option value="38400">38400</option>
+                <option value="57600">57600</option>
+                <option value="115200" selected>115200</option>
+            </select>
+        </div>
+        
+        <div class="card">
+            <h2>2. Данные от датчика</h2>
+            <div id="output"></div>
+            
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="lineCount">0</div>
+                    <div class="stat-label">Строк получено</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="byteCount">0</div>
+                    <div class="stat-label">Байт</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="lastValue">---</div>
+                    <div class="stat-label">Последнее значение</div>
+                </div>
+            </div>
+            
+            <br>
+            <button onclick="clearOutput()">🗑️ Очистить</button>
+            <button onclick="copyOutput()">📋 Копировать</button>
+            <button onclick="analyzeData()">🔬 Анализ формата</button>
+        </div>
+        
+        <div class="card">
+            <h2>3. Анализ протокола</h2>
+            <div id="analysis" class="status info">
+                Подключите датчик и получите несколько строк данных для анализа
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>4. Информация об устройстве</h2>
+            <div id="deviceInfo" class="status info">
+                Нет информации
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let port = null;
+        let reader = null;
+        let lineCount = 0;
+        let byteCount = 0;
+        let receivedData = [];
+        let rawBytes = [];
+        
+        async function connect() {
+            try {
+                // Проверка поддержки Web Serial
+                if (!('serial' in navigator)) {
+                    showError('Web Serial API не поддерживается. Используйте Chrome или Edge.');
+                    return;
+                }
+                
+                // Запрос порта
+                port = await navigator.serial.requestPort();
+                
+                // Получаем информацию об устройстве
+                const info = port.getInfo();
+                document.getElementById('deviceInfo').innerHTML = `
+                    <b>USB Vendor ID:</b> 0x${info.usbVendorId?.toString(16).toUpperCase() || 'N/A'}<br>
+                    <b>USB Product ID:</b> 0x${info.usbProductId?.toString(16).toUpperCase() || 'N/A'}<br>
+                    <b>Вероятный чип:</b> ${guessChip(info.usbVendorId, info.usbProductId)}
+                `;
+                document.getElementById('deviceInfo').className = 'status success';
+                
+                // Открываем порт
+                const baudRate = parseInt(document.getElementById('baudRate').value);
+                await port.open({ baudRate: baudRate });
+                
+                document.getElementById('connectionStatus').textContent = 
+                    `✅ Подключено! Порт открыт на скорости ${baudRate} бод`;
+                document.getElementById('connectionStatus').className = 'status success';
+                
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+                
+                // Начинаем чтение
+                readLoop();
+                
+            } catch (error) {
+                showError('Ошибка подключения: ' + error.message);
+            }
+        }
+        
+        async function readLoop() {
+            const decoder = new TextDecoderStream();
+            const inputDone = port.readable.pipeTo(decoder.writable);
+            reader = decoder.readable.getReader();
+            
+            let buffer = '';
+            
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += value;
+                    byteCount += value.length;
+                    
+                    // Сохраняем сырые данные
+                    for (let i = 0; i < value.length; i++) {
+                        rawBytes.push(value.charCodeAt(i));
+                    }
+                    
+                    // Обрабатываем строки
+                    let lines = buffer.split('\n');
+                    buffer = lines.pop(); // Незавершённая строка
+                    
+                    for (const line of lines) {
+                        if (line.trim()) {
+                            addLine(line.trim());
+                        }
+                    }
+                    
+                    updateStats();
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    showError('Ошибка чтения: ' + error.message);
+                }
+            }
+        }
+        
+        function addLine(line) {
+            lineCount++;
+            receivedData.push({
+                time: Date.now(),
+                data: line
+            });
+            
+            // Ограничиваем историю
+            if (receivedData.length > 1000) {
+                receivedData.shift();
+            }
+            
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = 'data-line';
+            div.textContent = `[${lineCount}] ${line}`;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+            
+            // Пробуем извлечь число
+            const num = extractNumber(line);
+            if (num !== null) {
+                document.getElementById('lastValue').textContent = num.toFixed(1);
+            }
+        }
+        
+        function extractNumber(line) {
+            // Пробуем разные форматы
+            const patterns = [
+                /(\d+\.?\d*)\s*(?:mm|мм|cm|см)?/i,  // "123 mm" или "123.5"
+                /distance[:\s]+(\d+\.?\d*)/i,        // "distance: 123"
+                /расст[а-я]*[:\s]+(\d+\.?\d*)/i,     // "расстояние: 123"
+                /d[:\s]+(\d+\.?\d*)/i,               // "d: 123"
+                /^(\d+\.?\d*)$/                       // просто число
+            ];
+            
+            for (const pattern of patterns) {
+                const match = line.match(pattern);
+                if (match) {
+                    return parseFloat(match[1]);
+                }
+            }
+            return null;
+        }
+        
+        function updateStats() {
+            document.getElementById('lineCount').textContent = lineCount;
+            document.getElementById('byteCount').textContent = byteCount;
+        }
+        
+        async function disconnect() {
+            if (reader) {
+                await reader.cancel();
+                reader = null;
+            }
+            if (port) {
+                await port.close();
+                port = null;
+            }
+            
+            document.getElementById('connectionStatus').textContent = 'Отключено';
+            document.getElementById('connectionStatus').className = 'status info';
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('disconnectBtn').disabled = true;
+        }
+        
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+            receivedData = [];
+            rawBytes = [];
+            lineCount = 0;
+            byteCount = 0;
+            updateStats();
+        }
+        
+        function copyOutput() {
+            const text = receivedData.map(d => d.data).join('\n');
+            navigator.clipboard.writeText(text);
+            alert('Скопировано ' + receivedData.length + ' строк!');
+        }
+        
+        function analyzeData() {
+            if (receivedData.length < 5) {
+                document.getElementById('analysis').innerHTML = 
+                    '⚠️ Недостаточно данных. Получите минимум 5 строк.';
+                return;
+            }
+            
+            const analysis = document.getElementById('analysis');
+            const lines = receivedData.slice(-20).map(d => d.data);
+            
+            // Анализируем формат
+            let format = 'Неизвестный';
+            let separator = '';
+            let fields = [];
+            
+            const sample = lines[0];
+            
+            if (sample.includes(',')) {
+                format = 'CSV (разделитель: запятая)';
+                separator = ',';
+                fields = sample.split(',');
+            } else if (sample.includes('\t')) {
+                format = 'TSV (разделитель: табуляция)';
+                separator = '\t';
+                fields = sample.split('\t');
+            } else if (sample.includes(':')) {
+                format = 'Key:Value';
+                const parts = sample.split(':');
+                fields = [parts[0].trim(), parts.slice(1).join(':').trim()];
+            } else if (/^\d+\.?\d*$/.test(sample.trim())) {
+                format = 'Только число (одно значение на строку)';
+                fields = ['value'];
+            } else if (sample.includes(' ')) {
+                format = 'Разделитель: пробел';
+                separator = ' ';
+                fields = sample.split(/\s+/);
+            }
+            
+            // Проверяем на бинарные данные
+            const hasBinary = rawBytes.some(b => b < 32 && b !== 10 && b !== 13);
+            
+            // Извлекаем числа
+            const numbers = lines.map(extractNumber).filter(n => n !== null);
+            const min = numbers.length ? Math.min(...numbers) : 0;
+            const max = numbers.length ? Math.max(...numbers) : 0;
+            const avg = numbers.length ? (numbers.reduce((a,b) => a+b, 0) / numbers.length) : 0;
+            
+            analysis.className = 'status success';
+            analysis.innerHTML = `
+                <b>📊 Анализ формата:</b><br><br>
+                <b>Формат:</b> ${format}<br>
+                <b>Полей в строке:</b> ${fields.length}<br>
+                <b>Пример полей:</b> [${fields.slice(0, 5).map(f => '"' + f.trim().substring(0, 20) + '"').join(', ')}]<br>
+                <b>Бинарные данные:</b> ${hasBinary ? '⚠️ Да (возможно Protobuf/Binary)' : 'Нет (текстовый)'}<br>
+                <br>
+                <b>📈 Статистика чисел:</b><br>
+                <b>Мин:</b> ${min.toFixed(1)} | <b>Макс:</b> ${max.toFixed(1)} | <b>Среднее:</b> ${avg.toFixed(1)}<br>
+                <br>
+                <b>📝 Примеры строк:</b><br>
+                ${lines.slice(0, 5).map((l, i) => `${i+1}. "${l.substring(0, 60)}${l.length > 60 ? '...' : ''}"`).join('<br>')}
+            `;
+        }
+        
+        function guessChip(vid, pid) {
+            const chips = {
+                '0x1A86': { '0x7523': 'CH340' },
+                '0x10C4': { '0xEA60': 'CP2102' },
+                '0x0403': { '0x6001': 'FT232RL', '0x6015': 'FT231X' },
+                '0x067B': { '0x2303': 'PL2303' },
+                '0x2341': { '0x0043': 'Arduino Uno', '0x0001': 'Arduino Uno' },
+                '0x1A86': { '0x55D4': 'CH9102' },
+                '0x303A': { '0x1001': 'ESP32-S3' },
+            };
+            
+            const vidHex = '0x' + (vid?.toString(16).toUpperCase() || '');
+            const pidHex = '0x' + (pid?.toString(16).toUpperCase() || '');
+            
+            for (const [v, products] of Object.entries(chips)) {
+                if (vid === parseInt(v)) {
+                    for (const [p, name] of Object.entries(products)) {
+                        if (pid === parseInt(p)) {
+                            return name;
+                        }
+                    }
+                }
+            }
+            return 'Неизвестный';
+        }
+        
+        function showError(msg) {
+            document.getElementById('connectionStatus').textContent = '❌ ' + msg;
+            document.getElementById('connectionStatus').className = 'status error';
+        }
+    </script>
+</body>
+</html>
