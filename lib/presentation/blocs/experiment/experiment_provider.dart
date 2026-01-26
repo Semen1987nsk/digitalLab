@@ -1,6 +1,8 @@
+import 'dart:io' show Platform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/hal/mock_hal.dart';
 import '../../../data/hal/usb_hal.dart';
+import '../../../data/hal/usb_hal_windows.dart';
 import '../../../domain/entities/sensor_data.dart';
 import '../../../domain/repositories/hal_interface.dart';
 
@@ -18,7 +20,13 @@ final halProvider = Provider<HALInterface>((ref) {
   final HALInterface hal;
   switch (mode) {
     case HalMode.usb:
-      hal = UsbHAL();
+      // На Windows/Linux/macOS используем flutter_libserialport
+      // На Android используем usb_serial
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        hal = UsbHALWindows();
+      } else {
+        hal = UsbHAL();
+      }
       break;
     case HalMode.ble:
       // TODO: BleHAL
