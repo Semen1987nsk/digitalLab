@@ -24,10 +24,15 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
   Widget build(BuildContext context) {
     final experimentState = ref.watch(experimentControllerProvider);
     final controller = ref.read(experimentControllerProvider.notifier);
-    final connectionStatus = ref.watch(connectionStatusProvider);
+    final connectionState = ref.watch(sensorConnectionProvider);
     
-    // Извлекаем значение расстояния из последнего пакета
-    final lastPacket = experimentState.data.isNotEmpty 
+    // Слушаем поток данных для обновления в реальном времени
+    final sensorData = ref.watch(sensorDataStreamProvider);
+    
+    // Извлекаем значение из потока или из последнего записанного пакета
+    SensorPacket? lastPacket;
+    sensorData.whenData((packet) => lastPacket = packet);
+    lastPacket ??= experimentState.data.isNotEmpty 
         ? experimentState.data.last 
         : null;
     
@@ -63,6 +68,7 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
           _ControlPanel(
             isRunning: experimentState.isRunning,
             measurementCount: experimentState.measurementCount,
+            isCalibrated: experimentState.isCalibrated,
             onStart: () => controller.start(),
             onStop: () => controller.stop(),
             onClear: () => controller.clear(),
@@ -119,7 +125,7 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
   
   String _getUnit() {
     switch (widget.sensorType) {
-      case 'distance': return 'мм';
+      case 'distance': return 'см';
       case 'temperature': return '°C';
       case 'voltage': return 'В';
       case 'acceleration': return 'м/с²';
@@ -140,7 +146,9 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
   double _getCurrentValue(SensorPacket? packet) {
     if (packet == null) return 0;
     switch (widget.sensorType) {
-      case 'distance': return packet.distanceMm ?? 0;
+      case 'distance': 
+        // Конвертируем мм → см для удобства
+        return (packet.distanceMm ?? 0) / 10.0;
       case 'temperature': return packet.temperatureC ?? 0;
       case 'voltage': return packet.voltageV ?? 0;
       case 'acceleration': 
@@ -157,6 +165,7 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
 class _ControlPanel extends StatelessWidget {
   final bool isRunning;
   final int measurementCount;
+  final bool isCalibrated;
   final VoidCallback onStart;
   final VoidCallback onStop;
   final VoidCallback onClear;
@@ -165,6 +174,7 @@ class _ControlPanel extends StatelessWidget {
   const _ControlPanel({
     required this.isRunning,
     required this.measurementCount,
+    required this.isCalibrated,
     required this.onStart,
     required this.onStop,
     required this.onClear,
@@ -214,12 +224,21 @@ class _ControlPanel extends StatelessWidget {
           
           const SizedBox(width: 12),
           
-          // Кнопка калибровки
-          OutlinedButton.icon(
-            onPressed: onCalibrate,
-            icon: const Icon(Icons.tune),
-            label: const Text('Ноль'),
-          ),
+          // Кнопка калибровки (toggle)
+          isCalibrated
+            ? ElevatedButton.icon(
+                onPressed: onCalibrate,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
+                icon: const Icon(Icons.tune),
+                label: const Text('Ноль ✓'),
+              )
+            : OutlinedButton.icon(
+                onPressed: onCalibrate,
+                icon: const Icon(Icons.tune),
+                label: const Text('Ноль'),
+              ),
           
           const Spacer(),
           
@@ -283,16 +302,44 @@ class _RealtimeChart extends StatelessWidget {
       return DataPoint(p.timeSeconds, y);
     }).toList();
     
-    // LTTB: прореживаем до 500 точек для производительности
-    final downsampled = LTTB.downsample(points, 500);
+    // LTTB прореживание:
+    // - Используем только когда данных МНОГО (>2000)
+    // - Иначе график "прыгает" при пересчёте
+    List<DataPoint> displayPoints;
+    if (points.length > 2000) {
+      // Прореживаем до 1000 точек (достаточно для плавного графика)
+      displayPoints = LTTB.downsample(points, 1000);
+    } else {
+      // Показываем все точки без прореживания
+      displayPoints = points;
+    }
     
     // Конвертируем в FlSpot для FL Chart
-    final spots = downsampled.map((p) => FlSpot(p.x, p.y)).toList();
+    final spots = displayPoints.map((p) => FlSpot(p.x, p.y)).toList();
     
     // Находим границы для осей
-    final minY = downsampled.map((p) => p.y).reduce((a, b) => a < b ? a : b);
-    final maxY = downsampled.map((p) => p.y).reduce((a, b) => a > b ? a : b);
-    final padding = (maxY - minY) * 0.1;
+    var minY = displayPoints.map((p) => p.y).reduce((a, b) => a < b ? a : b);
+    var maxY = displayPoints.map((p) => p.y).reduce((a, b) => a > b ? a : b);
+    
+    // ВАЖНО: Минимальный диапазон оси Y
+    // Чтобы мелкие колебания не выглядели как большие скачки
+    final minRange = _getMinYRange();  // Минимум 20 см для расстояния
+    final currentRange = maxY - minY;
+    
+    if (currentRange < minRange) {
+      // Расширяем диапазон симметрично от центра
+      final center = (maxY + minY) / 2;
+      minY = center - minRange / 2;
+      maxY = center + minRange / 2;
+      
+      // Не допускаем отрицательных значений для расстояния
+      if (minY < 0 && sensorType == 'distance') {
+        minY = 0;
+        maxY = minRange;
+      }
+    }
+    
+    final padding = (maxY - minY) * 0.05;  // 5% отступ
     
     return Card(
       child: Padding(
@@ -313,24 +360,41 @@ class _RealtimeChart extends StatelessWidget {
             ),
             titlesData: FlTitlesData(
               bottomTitles: AxisTitles(
-                axisNameWidget: const Text('Время, с'),
+                axisNameSize: 24,
+                axisNameWidget: const Text(
+                  'Время, с',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                ),
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 30,
-                  getTitlesWidget: (value, meta) => Text(
-                    value.toStringAsFixed(1),
-                    style: const TextStyle(fontSize: 10),
+                  reservedSize: 28,
+                  getTitlesWidget: (value, meta) => Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      value.toStringAsFixed(1),
+                      style: const TextStyle(fontSize: 10),
+                    ),
                   ),
                 ),
               ),
               leftTitles: AxisTitles(
-                axisNameWidget: Text(_getAxisLabel()),
+                axisNameSize: 28,
+                axisNameWidget: RotatedBox(
+                  quarterTurns: 1,
+                  child: Text(
+                    _getAxisLabel(),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ),
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 50,
-                  getTitlesWidget: (value, meta) => Text(
-                    value.toStringAsFixed(1),
-                    style: const TextStyle(fontSize: 10),
+                  reservedSize: 45,
+                  getTitlesWidget: (value, meta) => Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Text(
+                      value.toStringAsFixed(1),
+                      style: const TextStyle(fontSize: 10),
+                    ),
                   ),
                 ),
               ),
@@ -347,7 +411,9 @@ class _RealtimeChart extends StatelessWidget {
               LineChartBarData(
                 spots: spots,
                 isCurved: true,
-                curveSmoothness: 0.2,
+                curveSmoothness: 0.15,  // Небольшое сглаживание
+                preventCurveOverShooting: true,  // Предотвращает "усы"
+                preventCurveOvershootingThreshold: 5.0,
                 color: color,
                 barWidth: 2,
                 isStrokeCapRound: true,
@@ -376,7 +442,9 @@ class _RealtimeChart extends StatelessWidget {
   
   double _getValue(SensorPacket p) {
     switch (sensorType) {
-      case 'distance': return p.distanceMm ?? 0;
+      case 'distance': 
+        // Конвертируем мм → см для удобства (школьный стандарт)
+        return (p.distanceMm ?? 0) / 10.0;
       case 'temperature': return p.temperatureC ?? 0;
       case 'voltage': return p.voltageV ?? 0;
       case 'acceleration': 
@@ -388,9 +456,21 @@ class _RealtimeChart extends StatelessWidget {
     }
   }
   
+  /// Минимальный диапазон оси Y для каждого типа датчика
+  /// Чтобы мелкие колебания не выглядели как большие скачки
+  double _getMinYRange() {
+    switch (sensorType) {
+      case 'distance': return 20.0;     // Минимум 20 см на экране
+      case 'temperature': return 5.0;   // Минимум 5°C
+      case 'voltage': return 1.0;       // Минимум 1 В
+      case 'acceleration': return 2.0;  // Минимум 2 м/с²
+      default: return 10.0;
+    }
+  }
+  
   String _getAxisLabel() {
     switch (sensorType) {
-      case 'distance': return 'Расстояние, мм';
+      case 'distance': return 'Расстояние, см';
       case 'temperature': return 'Температура, °C';
       case 'voltage': return 'Напряжение, В';
       case 'acceleration': return 'Ускорение, м/с²';
@@ -400,7 +480,7 @@ class _RealtimeChart extends StatelessWidget {
   
   String _getUnit() {
     switch (sensorType) {
-      case 'distance': return 'мм';
+      case 'distance': return 'см';
       case 'temperature': return '°C';
       case 'voltage': return 'В';
       case 'acceleration': return 'м/с²';
@@ -458,7 +538,9 @@ class _DataTable extends StatelessWidget {
   
   double _getValue(SensorPacket p) {
     switch (sensorType) {
-      case 'distance': return p.distanceMm ?? 0;
+      case 'distance': 
+        // Конвертируем мм → см для удобства
+        return (p.distanceMm ?? 0) / 10.0;
       case 'temperature': return p.temperatureC ?? 0;
       case 'voltage': return p.voltageV ?? 0;
       case 'acceleration': 
@@ -472,7 +554,7 @@ class _DataTable extends StatelessWidget {
   
   String _getUnit() {
     switch (sensorType) {
-      case 'distance': return 'мм';
+      case 'distance': return 'см';
       case 'temperature': return '°C';
       case 'voltage': return 'В';
       case 'acceleration': return 'м/с²';

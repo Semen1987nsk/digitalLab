@@ -12,6 +12,9 @@ abstract class HALInterface {
   /// Информация об устройстве (null если не подключено)
   DeviceInfo? get deviceInfo;
   
+  /// Активна ли калибровка (ноль)
+  bool get isCalibrated;
+  
   /// Подключиться к устройству
   Future<bool> connect();
   
@@ -24,7 +27,9 @@ abstract class HALInterface {
   /// Остановить измерения
   Future<void> stopMeasurement();
   
-  /// Калибровать датчик (обнулить)
+  /// Калибровать датчик (обнулить) - toggle
+  /// Первый вызов: устанавливает текущее значение как 0
+  /// Второй вызов: сбрасывает калибровку
   Future<void> calibrate(String sensorId);
   
   /// Установить частоту опроса (Гц)

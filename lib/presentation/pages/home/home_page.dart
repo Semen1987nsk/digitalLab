@@ -4,13 +4,17 @@ import '../../../domain/entities/sensor_data.dart';
 import '../../blocs/experiment/experiment_provider.dart';
 import '../../themes/app_theme.dart';
 import '../experiment/experiment_page.dart';
+import '../debug/usb_debug_page.dart';
+import '../port_selection/port_selection_page.dart';
+import '../test_lab/test_scenarios_page.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final connectionStatus = ref.watch(connectionStatusProvider);
+    // Используем новый провайдер подключения
+    final connectionState = ref.watch(sensorConnectionProvider);
     final experimentState = ref.watch(experimentControllerProvider);
     final halMode = ref.watch(halModeProvider);
     
@@ -18,6 +22,43 @@ class HomePage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Цифровая Лаборатория'),
         actions: [
+          // Кнопка выбора порта
+          IconButton(
+            icon: const Icon(Icons.settings_ethernet),
+            tooltip: 'Выбор COM-порта',
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => PortSelectionPage(
+                  onPortSelected: (portName) {
+                    ref.read(selectedPortProvider.notifier).state = portName;
+                    Navigator.pop(context);
+                    // Переподключаемся к выбранному порту
+                    ref.read(sensorConnectionProvider.notifier).connect();
+                  },
+                ),
+              ));
+            },
+          ),
+          // Кнопка тестовой лаборатории
+          IconButton(
+            icon: const Icon(Icons.science),
+            tooltip: '🧪 Тестовая лаборатория',
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => const TestScenariosPage(),
+              ));
+            },
+          ),
+          // Кнопка отладки USB
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            tooltip: 'USB Отладка',
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(
+                builder: (_) => const UsbDebugPage(),
+              ));
+            },
+          ),
           // Переключатель режима HAL
           PopupMenuButton<HalMode>(
             icon: Icon(_getHalModeIcon(halMode)),
@@ -64,11 +105,7 @@ class HomePage extends ConsumerWidget {
           // Индикатор статуса подключения
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: connectionStatus.when(
-              data: (status) => _ConnectionIndicator(status: status),
-              loading: () => const _ConnectionIndicator(status: ConnectionStatus.connecting),
-              error: (_, __) => const _ConnectionIndicator(status: ConnectionStatus.error),
-            ),
+            child: _ConnectionIndicator(status: connectionState.status),
           ),
         ],
       ),
@@ -131,11 +168,7 @@ class HomePage extends ConsumerWidget {
             
             // Кнопка подключения
             const SizedBox(height: 24),
-            connectionStatus.when(
-              data: (status) => _buildConnectButton(context, ref, status),
-              loading: () => _buildConnectButton(context, ref, ConnectionStatus.connecting),
-              error: (_, __) => _buildConnectButton(context, ref, ConnectionStatus.error),
-            ),
+            _buildConnectButton(context, ref, connectionState.status),
           ],
         ),
       ),
@@ -143,13 +176,13 @@ class HomePage extends ConsumerWidget {
   }
   
   Widget _buildConnectButton(BuildContext context, WidgetRef ref, ConnectionStatus status) {
-    final controller = ref.read(experimentControllerProvider.notifier);
+    final connectionController = ref.read(sensorConnectionProvider.notifier);
     
     switch (status) {
       case ConnectionStatus.disconnected:
         return ElevatedButton.icon(
-          onPressed: () => controller.connect(),
-          icon: const Icon(Icons.bluetooth),
+          onPressed: () => connectionController.connect(),
+          icon: const Icon(Icons.usb),
           label: const Text('Подключить датчик'),
         );
       case ConnectionStatus.connecting:
@@ -164,7 +197,7 @@ class HomePage extends ConsumerWidget {
         );
       case ConnectionStatus.connected:
         return ElevatedButton.icon(
-          onPressed: null,
+          onPressed: () => connectionController.disconnect(),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.success,
           ),
@@ -172,13 +205,35 @@ class HomePage extends ConsumerWidget {
           label: const Text('Датчик подключён'),
         );
       case ConnectionStatus.error:
-        return ElevatedButton.icon(
-          onPressed: () => controller.connect(),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.error,
-          ),
-          icon: const Icon(Icons.error),
-          label: const Text('Ошибка. Повторить'),
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.error.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.usb_off, color: AppColors.error, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Датчик не обнаружен',
+                    style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: () => connectionController.connect(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Повторить поиск'),
+            ),
+          ],
         );
     }
   }

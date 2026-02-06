@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:usb_serial/usb_serial.dart';
 import '../../domain/entities/sensor_data.dart';
 import '../../domain/repositories/hal_interface.dart';
+import '../../domain/math/signal_processor.dart';
 
 /// USB HAL для датчика расстояния V802 (HC-SR04 + FT232RL)
 /// 
@@ -16,6 +17,9 @@ class UsbHAL implements HALInterface {
   final _connectionStatusController = StreamController<ConnectionStatus>.broadcast();
   final _sensorDataController = StreamController<SensorPacket>.broadcast();
   
+  /// Процессор сигнала для фильтрации шума
+  final _signalProcessor = SignalProcessor(sensorType: SensorType.distance);
+  
   UsbPort? _port;
   StreamSubscription? _subscription;
   String _buffer = '';
@@ -23,6 +27,7 @@ class UsbHAL implements HALInterface {
   int _startTimeMs = 0;
   bool _isMeasuring = false;
   double _calibrationOffset = 0.0;
+  double _lastRawValue = 0.0;  // Для калибровки нуля
   
   DeviceInfo? _deviceInfo;
   
@@ -35,6 +40,9 @@ class UsbHAL implements HALInterface {
   @override
   DeviceInfo? get deviceInfo => _deviceInfo;
   
+  @override
+  bool get isCalibrated => _calibrationOffset != 0.0;
+  
   /// Поиск устройства V802
   static Future<UsbDevice?> findDevice() async {
     final devices = await UsbSerial.listDevices();
@@ -46,11 +54,8 @@ class UsbHAL implements HALInterface {
       }
     }
     
-    // Если не нашли по VID/PID, возвращаем первое устройство
-    if (devices.isNotEmpty) {
-      return devices.first;
-    }
-    
+    // ВАЖНО: НЕ возвращаем первое попавшееся устройство!
+    // Если датчик не найден по VID/PID - значит он не подключён
     return null;
   }
   
@@ -126,6 +131,7 @@ class UsbHAL implements HALInterface {
     _isMeasuring = true;
     _startTimeMs = DateTime.now().millisecondsSinceEpoch;
     _buffer = '';
+    _signalProcessor.reset();
   }
   
   @override
@@ -135,10 +141,22 @@ class UsbHAL implements HALInterface {
   
   @override
   Future<void> calibrate(String sensorId) async {
-    // Запоминаем текущее значение как ноль
-    // Будет применено к следующим измерениям
-    // Нужно получить последнее значение и сохранить как offset
-    print('[USB HAL] Calibration requested for $sensorId');
+    // Toggle: если калибровка активна - сбрасываем, иначе устанавливаем
+    if (_calibrationOffset != 0.0) {
+      // Сбрасываем калибровку
+      _calibrationOffset = 0.0;
+      _signalProcessor.reset();  // Сбрасываем фильтр для быстрой реакции
+      print('[USB HAL] Калибровка СБРОШЕНА');
+    } else {
+      // Устанавливаем ноль
+      if (_lastRawValue > 0) {
+        _calibrationOffset = -_lastRawValue;
+        _signalProcessor.reset();
+        print('[USB HAL] Калибровка: offset = ${_calibrationOffset.toStringAsFixed(1)} мм');
+      } else {
+        print('[USB HAL] Нет данных для калибровки');
+      }
+    }
   }
   
   /// Установить калибровочное смещение (см)
@@ -162,9 +180,7 @@ class UsbHAL implements HALInterface {
   
   /// Обработка входящих данных
   void _onDataReceived(Uint8List data) {
-    if (!_isMeasuring) return;
-    
-    // Добавляем в буфер
+    // Добавляем в буфер ВСЕГДА (для калибровки даже когда измерение остановлено)
     _buffer += String.fromCharCodes(data);
     
     // Ищем полные строки (разделитель \n или \r\n)
@@ -182,19 +198,37 @@ class UsbHAL implements HALInterface {
   /// Парсинг строки формата "173 cm"
   void _parseLine(String line) {
     try {
-      // Формат: "173 cm" или "173.5 cm"
-      final regex = RegExp(r'(\d+\.?\d*)\s*(?:cm|см)?', caseSensitive: false);
+      // Формат: "173 cm" или "173.5 cm" или "173 мм"
+      final regex = RegExp(r'(\d+\.?\d*)\s*(?:cm|см|mm|мм)?', caseSensitive: false);
       final match = regex.firstMatch(line);
       
       if (match != null) {
-        final distanceCm = double.parse(match.group(1)!);
-        final distanceMm = (distanceCm * 10) - (_calibrationOffset * 10);
+        var rawValue = double.parse(match.group(1)!);
+        
+        // Конвертируем cm в mm если нужно
+        if (line.toLowerCase().contains('cm') || line.toLowerCase().contains('см')) {
+          rawValue *= 10; // cm -> mm
+        }
+        
+        // ВАЖНО: Сохраняем сырое значение ВСЕГДА (для функции "Ноль")
+        _lastRawValue = rawValue;
+        
+        // НЕ отправляем данные в UI пока измерение не начато
+        if (!_isMeasuring) {
+          return;
+        }
+        
+        // Применяем калибровку (смещение нуля)
+        final calibratedValue = rawValue + _calibrationOffset;
+        
+        // Применяем фильтрацию
+        final filteredValue = _signalProcessor.process(calibratedValue);
         
         _timestampMs = DateTime.now().millisecondsSinceEpoch - _startTimeMs;
         
         final packet = SensorPacket(
           timestampMs: _timestampMs,
-          distanceMm: distanceMm,
+          distanceMm: filteredValue,
         );
         
         _sensorDataController.add(packet);
