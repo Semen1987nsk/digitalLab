@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/hal/port_scanner.dart';
 import '../../../data/hal/port_connection_manager.dart';
+import '../../themes/app_theme.dart';
 
 /// Страница выбора COM-порта с диагностикой
 class PortSelectionPage extends StatefulWidget {
@@ -18,6 +19,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
   List<PortInfo> _ports = [];
   bool _isScanning = false;
   bool _isConnecting = false;
+  bool _showDiagnostics = false;
   String? _selectedPort;
   String _log = '';
   
@@ -70,8 +72,6 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
     
     final manager = PortConnectionManager(
       onLog: _addLog,
-      maxRetries: 2,
-      retryDelayMs: 300,
     );
     
     final result = await manager.connect(port.name);
@@ -91,7 +91,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Порт ${port.name} готов к работе'),
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.success,
           ),
         );
       }
@@ -112,10 +112,10 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A2A),
+        backgroundColor: AppColors.surface,
         title: const Row(
           children: [
-            Icon(Icons.error_outline, color: Colors.red),
+            Icon(Icons.error_outline, color: AppColors.error),
             SizedBox(width: 8),
             Text('Ошибка подключения'),
           ],
@@ -136,10 +136,11 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
   
   @override
   Widget build(BuildContext context) {
+    final selectedPortInfo = _ports.where((p) => p.name == _selectedPort).firstOrNull;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E1E1E),
         title: const Text('Выбор COM-порта'),
         actions: [
           IconButton(
@@ -155,19 +156,16 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
           ),
         ],
       ),
-      body: Column(
+      body: ListView(
+        padding: const EdgeInsets.all(20),
         children: [
-          // Список портов
-          Expanded(
-            flex: 2,
-            child: _buildPortList(),
-          ),
-          
-          // Лог
-          Expanded(
-            flex: 1,
-            child: _buildLogPanel(),
-          ),
+          _buildOverviewCard(selectedPortInfo),
+          const SizedBox(height: 16),
+          _buildConnectionChecklist(),
+          const SizedBox(height: 16),
+          _buildPortSection(),
+          const SizedBox(height: 16),
+          _buildDiagnosticsSection(),
         ],
       ),
     );
@@ -176,6 +174,56 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
   /// Проверяет, есть ли среди портов наш датчик (FTDI)
   bool get _hasSensorPort => _ports.any((p) => p.isLikelyOurSensor);
   
+  Widget _buildPortSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Доступные порты',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Сначала выберите датчик, затем нажмите «Подключить».',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _isScanning ? null : _scanPorts,
+                  icon: _isScanning
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                  label: Text(_isScanning ? 'Поиск...' : 'Обновить'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildPortList(),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPortList() {
     if (_isScanning && _ports.isEmpty) {
       return const Center(
@@ -184,7 +232,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
           children: [
             CircularProgressIndicator(),
             SizedBox(height: 16),
-            Text('Сканирование портов...'),
+            Text('Ищем доступные COM-порты...'),
           ],
         ),
       );
@@ -195,19 +243,19 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.usb_off, size: 64, color: Colors.grey),
+            const Icon(Icons.usb_off, size: 64, color: AppColors.textHint),
             const SizedBox(height: 16),
             const Text(
               'COM-порты не найдены',
-              style: TextStyle(fontSize: 18),
+              style: TextStyle(fontSize: 18, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 8),
             const Text(
               'Подключите датчик и нажмите "Обновить"',
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
+            FilledButton.icon(
               onPressed: _scanPorts,
               icon: const Icon(Icons.refresh),
               label: const Text('Обновить'),
@@ -218,57 +266,64 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
     }
     
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Предупреждение если датчик не найден
         if (!_hasSensorPort)
           Container(
-            margin: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.withOpacity(0.5)),
+              color: AppColors.warning.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.warning.withValues(alpha: 0.35),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.warning_amber, color: Colors.orange, size: 32),
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.warning,
+                  size: 28,
+                ),
                 const SizedBox(width: 12),
-                Expanded(
+                const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Датчик не обнаружен!',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          color: Colors.orange,
+                          color: AppColors.warning,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Text(
                         'Подключите USB-датчик и нажмите "Обновить" (↻)',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
                   onPressed: _scanPorts,
-                  icon: const Icon(Icons.refresh, color: Colors.orange),
+                  icon: const Icon(Icons.refresh, color: AppColors.warning),
                   tooltip: 'Обновить список портов',
                 ),
               ],
             ),
           ),
-        
-        // Список портов
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _ports.length,
-            itemBuilder: (ctx, index) => _buildPortCard(_ports[index]),
-          ),
+
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _ports.length,
+          itemBuilder: (ctx, index) => _buildPortCard(_ports[index]),
         ),
       ],
     );
@@ -279,21 +334,23 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
     final isOurSensor = port.isLikelyOurSensor;
     
     return Card(
-      color: isSelected
-          ? const Color(0xFF2E4A2E)
-          : const Color(0xFF1E1E1E),
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isOurSensor
-              ? Colors.green.withOpacity(0.5)
-              : Colors.transparent,
-          width: 2,
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.45)
+              : isOurSensor
+                  ? AppColors.success.withValues(alpha: 0.35)
+                  : AppColors.cardBorder,
+          width: isSelected || isOurSensor ? 1.5 : 1,
         ),
       ),
+      color: isSelected
+          ? AppColors.primary.withValues(alpha: 0.08)
+          : AppColors.surface,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => setState(() => _selectedPort = port.name),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -304,8 +361,8 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: _getTypeColor(port.type).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
+                  color: _getTypeColor(port.type).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   _getTypeIcon(port.type),
@@ -326,6 +383,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
                           ),
                         ),
                         if (isOurSensor) ...[
@@ -336,14 +394,15 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.green,
-                              borderRadius: BorderRadius.circular(4),
+                              color: AppColors.success.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(999),
                             ),
                             child: const Text(
                               'ДАТЧИК',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
+                                color: AppColors.success,
                               ),
                             ),
                           ),
@@ -352,12 +411,11 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      // Показываем описание только если оно не пустое, иначе тип порта
-                      (port.description != null && port.description!.isNotEmpty)
-                          ? port.description!
+                      port.description.isNotEmpty
+                          ? port.description
                           : port.typeDescription,
-                      style: TextStyle(
-                        color: Colors.grey[400],
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -368,8 +426,8 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
                         const SizedBox(width: 8),
                         Text(
                           port.typeDescription,
-                          style: TextStyle(
-                            color: Colors.grey[600],
+                          style: const TextStyle(
+                            color: AppColors.textHint,
                             fontSize: 11,
                           ),
                         ),
@@ -378,15 +436,14 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
                   ],
                 ),
               ),
-              
-              // Кнопка подключения
+
               if (isSelected)
-                ElevatedButton(
+                FilledButton(
                   onPressed: _isConnecting
                       ? null
                       : () => _connectToPort(port),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.accent,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
                       vertical: 12,
@@ -416,23 +473,23 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
     
     switch (port.availability) {
       case PortAvailability.available:
-        color = Colors.green;
+        color = AppColors.success;
         text = 'Доступен';
         break;
       case PortAvailability.accessDenied:
-        color = Colors.orange;
+        color = AppColors.warning;
         text = 'Запрещён';
         break;
       case PortAvailability.busy:
-        color = Colors.red;
+        color = AppColors.error;
         text = 'Занят';
         break;
       case PortAvailability.error:
-        color = Colors.red;
+        color = AppColors.error;
         text = 'Ошибка';
         break;
       case PortAvailability.untested:
-        color = Colors.grey;
+        color = AppColors.textHint;
         text = '???';
         break;
     }
@@ -440,9 +497,9 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: color.withOpacity(0.5)),
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(
         text,
@@ -475,63 +532,220 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
   Color _getTypeColor(PortType type) {
     switch (type) {
       case PortType.ftdi:
-        return Colors.green;
+        return AppColors.success;
       case PortType.arduino:
-        return Colors.blue;
+        return AppColors.primary;
       case PortType.bluetooth:
-        return Colors.indigo;
+        return const Color(0xFF7C6DFF);
       case PortType.builtin:
-        return Colors.grey;
+        return AppColors.textSecondary;
       case PortType.virtual:
-        return Colors.purple;
+        return const Color(0xFFA371F7);
       case PortType.unknown:
-        return Colors.orange;
+        return AppColors.warning;
     }
   }
-  
-  Widget _buildLogPanel() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0D0D0D),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+
+  Widget _buildOverviewCard(PortInfo? selectedPortInfo) {
+    final hasSensor = _hasSensorPort;
+    final selectedName = selectedPortInfo?.name;
+    final title = hasSensor
+        ? 'Датчик найден. Можно подключаться.'
+        : 'Сначала найдите подключённый USB-датчик.';
+    final subtitle = selectedName != null
+        ? 'Выбран порт $selectedName. После проверки нажмите «Подключить».'
+        : hasSensor
+            ? 'Мы отметили подходящие порты. Выберите нужный порт в списке ниже.'
+            : 'Если датчик уже подключён, обновите список и проверьте кабель USB.';
+    final color = hasSensor ? AppColors.success : AppColors.warning;
+    final icon = hasSensor ? Icons.check_circle_outline : Icons.usb_off;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: color),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Лог диагностики',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
+    );
+  }
+
+  Widget _buildConnectionChecklist() {
+    return const Card(
+      child: Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Как подключить датчик',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
               ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 18),
-                onPressed: () => setState(() => _log = ''),
-                tooltip: 'Очистить лог',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
+            ),
+            SizedBox(height: 12),
+            _ChecklistRow(
+              icon: Icons.cable,
+              text: 'Подключите датчик к компьютеру по USB.',
+            ),
+            _ChecklistRow(
+              icon: Icons.refresh,
+              text: 'Нажмите «Обновить», чтобы заново проверить COM-порты.',
+            ),
+            _ChecklistRow(
+              icon: Icons.sensors,
+              text: 'Выберите порт с пометкой «ДАТЧИК» или подходящий COM-порт.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDiagnosticsSection() {
+    return Card(
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: _showDiagnostics,
+          onExpansionChanged: (value) => setState(() => _showDiagnostics = value),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          leading: const Icon(Icons.manage_search, color: AppColors.info),
+          title: const Text(
+            'Диагностика подключения',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
-          const SizedBox(height: 8),
+          subtitle: const Text(
+            'Журнал для сложных случаев, если датчик не определяется.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          children: [
+            Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(minHeight: 140, maxHeight: 260),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F141A),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Системный журнал',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => setState(() => _log = ''),
+                        icon: const Icon(Icons.delete_outline, size: 16),
+                        label: const Text('Очистить'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      reverse: true,
+                      child: Text(
+                        _log.isEmpty ? 'Журнал пока пуст.' : _log,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          color: AppColors.textPrimary,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChecklistRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _ChecklistRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: SingleChildScrollView(
-              reverse: true,
-              child: Text(
-                _log,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 11,
-                  color: Colors.white70,
-                ),
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.4,
               ),
             ),
           ),

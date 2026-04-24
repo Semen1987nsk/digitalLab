@@ -136,3 +136,78 @@ class MedianFilter {
     return sorted[sorted.length ~/ 2];
   }
 }
+
+/// Защита от выбросов с **нулевой задержкой** для нормальных значений.
+///
+/// В отличие от MedianFilter (задержка = 1 сэмпл = 100мс @ 10Гц),
+/// SpikeGuard пропускает нормальные значения мгновенно.
+///
+/// ## Алгоритм
+///
+/// - |delta| ≤ [maxDelta] → **немедленный пропуск** (0 мс задержки)
+/// - |delta| > maxDelta, первый раз → **задержать на 1 сэмпл** (возможный выброс)
+/// - |delta| > maxDelta, второй раз подряд → **пропустить** (реальное быстрое движение)
+///
+/// ## Сравнение с MedianFilter(3)
+///
+/// | Ситуация           | Median(3) | SpikeGuard |
+/// |---------------------|-----------|------------|
+/// | Нормальное значение | 100мс     | **0мс**    |
+/// | Одиночный выброс    | отброшен  | отброшен   |
+/// | Быстрое движение    | 100мс     | 100мс      |
+///
+/// ## Пример
+///
+/// ```dart
+/// final guard = SpikeGuard(maxDelta: 500.0); // 500mm = 5 м/с @ 10Гц
+/// final clean = guard.process(rawValue);
+/// ```
+class SpikeGuard {
+  /// Максимальное допустимое изменение за 1 сэмпл (в единицах сигнала).
+  /// Для HC-SR04 @ 10Гц: 500мм = движение 5 м/с — быстрее руки не бывает.
+  final double maxDelta;
+
+  double _lastValid = double.nan;
+  bool _hasPending = false;
+
+  SpikeGuard({required this.maxDelta});
+
+  /// Обработать одно измерение. Возвращает чистое значение.
+  double process(double value) {
+    // Первое значение — принимаем безусловно
+    if (_lastValid.isNaN) {
+      _lastValid = value;
+      return value;
+    }
+
+    final delta = (value - _lastValid).abs();
+
+    if (delta <= maxDelta) {
+      // Нормальное значение — МГНОВЕННЫЙ пропуск (0мс задержки)
+      _lastValid = value;
+      _hasPending = false;
+      return value;
+    }
+
+    // delta > maxDelta — возможный выброс
+    if (_hasPending) {
+      // Второй подряд «выброс» → это реальное быстрое движение
+      _lastValid = value;
+      _hasPending = false;
+      return value;
+    }
+
+    // Первый выброс → задержать на 1 сэмпл для подтверждения
+    _hasPending = true;
+    return _lastValid;
+  }
+
+  /// Сбросить состояние
+  void reset() {
+    _lastValid = double.nan;
+    _hasPending = false;
+  }
+
+  /// Последнее валидное значение
+  double get current => _lastValid.isNaN ? 0.0 : _lastValid;
+}

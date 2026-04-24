@@ -4,6 +4,7 @@
 /// - Международной системе СИ
 /// - Школьным стандартам РФ (ФГОС)
 /// - Лучшим практикам (Vernier, PASCO, Phywe)
+library;
 
 /// Форматирует расстояние с автоматическим выбором единиц
 /// 
@@ -103,13 +104,13 @@ class VoltageFormatter {
 class CurrentFormatter {
   static String format(double valueA, {int decimals = 3}) {
     if (valueA.abs() >= 1.0) {
-      return '${valueA.toStringAsFixed(decimals)} А';
+      return '${valueA.toStringAsFixed(decimals.clamp(0, 10))} А';
     } else if (valueA.abs() >= 0.001) {
       final mA = valueA * 1000;
-      return '${mA.toStringAsFixed(decimals - 1)} мА';
+      return '${mA.toStringAsFixed((decimals - 1).clamp(0, 10))} мА';
     } else {
       final uA = valueA * 1000000;
-      return '${uA.toStringAsFixed(decimals - 2)} мкА';
+      return '${uA.toStringAsFixed((decimals - 2).clamp(0, 10))} мкА';
     }
   }
 }
@@ -142,14 +143,14 @@ class PressureFormatter {
 class TimeFormatter {
   static String format(int timestampMs) {
     if (timestampMs < 1000) {
-      return '${timestampMs} мс';
+      return '$timestampMs мс';
     } else if (timestampMs < 60000) {
       final seconds = timestampMs / 1000.0;
       return '${seconds.toStringAsFixed(1)} с';
     } else {
       final minutes = timestampMs ~/ 60000;
       final seconds = (timestampMs % 60000) / 1000.0;
-      return '${minutes}:${seconds.toStringAsFixed(1).padLeft(4, '0')}';
+      return '$minutes:${seconds.toStringAsFixed(1).padLeft(4, '0')}';
     }
   }
   

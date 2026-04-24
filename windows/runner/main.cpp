@@ -25,9 +25,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   project.set_dart_entrypoint_arguments(std::move(command_line_arguments));
 
   FlutterWindow window(project);
-  Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"digital_lab", origin, size)) {
+  // Center window on primary monitor
+  int screenW = ::GetSystemMetrics(SM_CXSCREEN);
+  int screenH = ::GetSystemMetrics(SM_CYSCREEN);
+  Win32Window::Point origin((screenW - size.width) / 2,
+                            (screenH - size.height) / 2);
+  if (!window.Create(L"\u041B\u0410\u0411\u041E\u0421\u0424\u0415\u0420\u0410  \u2014  \u0426\u0438\u0444\u0440\u043E\u0432\u044B\u0435 \u043B\u0430\u0431\u043E\u0440\u0430\u0442\u043E\u0440\u0438\u0438", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

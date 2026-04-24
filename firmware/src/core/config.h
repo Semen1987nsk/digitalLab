@@ -49,30 +49,32 @@
 // -----------------------------------------------------------------------------
 #define DEFAULT_SAMPLE_RATE_HZ      10      // По умолчанию 10 Гц
 #define MAX_SAMPLE_RATE_HZ          1000    // Максимум 1 кГц
-#define RING_BUFFER_SIZE            10000   // Точек в буфере (PSRAM)
+#define BLE_TX_BUFFER_SIZE          10000   // Очередь отправки BLE (destructive pop)
+#define HISTORY_BUFFER_SIZE         10000   // История для Web UI / CSV (non-destructive)
 
 // -----------------------------------------------------------------------------
-// BLE
+// BLE (Custom 128-bit UUIDs — do NOT use 0x2Axx, those are Bluetooth SIG reserved)
 // -----------------------------------------------------------------------------
 #define BLE_DEVICE_NAME             "PhysicsLab"
-#define BLE_SERVICE_UUID            "00001820-0000-1000-8000-00805f9b34fb"
-#define BLE_CHAR_DATA_UUID          "00002a00-0000-1000-8000-00805f9b34fb"
-#define BLE_CHAR_COMMAND_UUID       "00002a01-0000-1000-8000-00805f9b34fb"
-#define BLE_CHAR_CONFIG_UUID        "00002a02-0000-1000-8000-00805f9b34fb"
-#define BLE_CHAR_FIRMWARE_UUID      "00002a03-0000-1000-8000-00805f9b34fb"
+#define BLE_SERVICE_UUID            "e4c8a4e0-1234-5678-9abc-def012345678"
+#define BLE_CHAR_DATA_UUID          "e4c8a4e1-1234-5678-9abc-def012345678"
+#define BLE_CHAR_COMMAND_UUID       "e4c8a4e2-1234-5678-9abc-def012345678"
+#define BLE_CHAR_CONFIG_UUID        "e4c8a4e3-1234-5678-9abc-def012345678"
+#define BLE_CHAR_FIRMWARE_UUID      "e4c8a4e4-1234-5678-9abc-def012345678"
 
 // -----------------------------------------------------------------------------
 // Wi-Fi AP (Fallback Web UI)
+// Password is generated dynamically from MAC address in main.cpp
+// (generateWifiPassword() → "Lab_XXXXXXXX"). Printed on device label.
 // -----------------------------------------------------------------------------
 #define WIFI_AP_SSID                "PhysicsLab"
-#define WIFI_AP_PASSWORD            "12345678"
 #define WIFI_AP_CHANNEL             1
 #define WIFI_AP_MAX_CONNECTIONS     4
 
 // -----------------------------------------------------------------------------
 // Версия прошивки
 // -----------------------------------------------------------------------------
-#define FIRMWARE_VERSION            "1.0.0"
+#define FIRMWARE_VERSION            "1.1.0"
 #define FIRMWARE_BUILD_DATE         __DATE__
 #define HARDWARE_VERSION            "HW1.0"
 

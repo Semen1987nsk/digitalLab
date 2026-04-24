@@ -1,14 +1,15 @@
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:digital_lab/domain/math/lttb.dart';
 
 void main() {
   group('LTTB Downsampling', () {
     test('should return same data if below threshold', () {
-      final data = [
-        const DataPoint(0, 10),
-        const DataPoint(1, 20),
-        const DataPoint(2, 15),
-      ];
+      final data = Float64List.fromList([
+        0, 10,
+        1, 20,
+        2, 15,
+      ]);
       
       final result = LTTB.downsample(data, 10);
       
@@ -16,42 +17,45 @@ void main() {
     });
     
     test('should downsample to threshold count', () {
-      // Создаём 1000 точек
-      final data = List.generate(
-        1000,
-        (i) => DataPoint(i.toDouble(), (i % 100).toDouble()),
-      );
+      // Создаём 1000 точек (2000 элементов)
+      final data = Float64List(2000);
+      for (int i = 0; i < 1000; i++) {
+        data[i * 2] = i.toDouble();
+        data[i * 2 + 1] = (i % 100).toDouble();
+      }
       
       final result = LTTB.downsample(data, 100);
       
-      expect(result.length, equals(100));
+      expect(result.length, equals(200)); // 100 точек * 2
     });
     
     test('should preserve first and last points', () {
-      final data = List.generate(
-        500,
-        (i) => DataPoint(i.toDouble(), i * 2.0),
-      );
+      final data = Float64List(1000);
+      for (int i = 0; i < 500; i++) {
+        data[i * 2] = i.toDouble();
+        data[i * 2 + 1] = i * 2.0;
+      }
       
       final result = LTTB.downsample(data, 50);
       
-      expect(result.first.x, equals(data.first.x));
-      expect(result.first.y, equals(data.first.y));
-      expect(result.last.x, equals(data.last.x));
-      expect(result.last.y, equals(data.last.y));
+      expect(result[0], equals(data[0]));
+      expect(result[1], equals(data[1]));
+      expect(result[result.length - 2], equals(data[data.length - 2]));
+      expect(result[result.length - 1], equals(data[data.length - 1]));
     });
     
     test('should handle threshold of 3', () {
-      final data = List.generate(
-        100,
-        (i) => DataPoint(i.toDouble(), i.toDouble()),
-      );
+      final data = Float64List(200);
+      for (int i = 0; i < 100; i++) {
+        data[i * 2] = i.toDouble();
+        data[i * 2 + 1] = i.toDouble();
+      }
       
       final result = LTTB.downsample(data, 3);
       
-      expect(result.length, equals(3));
-      expect(result.first.x, equals(0));
-      expect(result.last.x, equals(99));
+      expect(result.length, equals(6));
+      expect(result[0], equals(0));
+      expect(result[result.length - 2], equals(99));
     });
   });
   

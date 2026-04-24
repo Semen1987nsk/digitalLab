@@ -23,8 +23,11 @@ flutter build apk --release
 ```bash
 cd firmware
 
-# Сборка
-pio run -e esp32s3
+# Надёжная подготовка toolchain (Windows PowerShell)
+powershell -ExecutionPolicy Bypass -File ..\tools\bootstrap_firmware_env.ps1
+
+# Сборка (через pinned PlatformIO)
+powershell -ExecutionPolicy Bypass -File ..\tools\build_firmware.ps1
 
 # Прошивка
 pio run -e esp32s3 -t upload
@@ -32,6 +35,10 @@ pio run -e esp32s3 -t upload
 # Мониторинг Serial
 pio device monitor
 ```
+
+Если `pio` не найден, используйте bootstrap-скрипт выше: он автоматически
+устанавливает PlatformIO CLI в изолированное окружение и проверяет доступность
+команды.
 
 ## � Поддерживаемые датчики
 
@@ -43,7 +50,7 @@ pio device monitor
 | Формат данных | `173 cm` (число + "cm") |
 | Единица измерения | Сантиметры → конвертируется в мм |
 
-### ESP32-S3 Мультидатчик (планируется)
+### ESP32-S3 Мультидатчик
 - VL53L1X — Лазерный дальномер (0-4000 мм)
 - INA226 — Вольтметр/Амперметр
 - BME280 — Температура/Давление/Влажность
@@ -55,8 +62,8 @@ pio device monitor
 lib/                          # Flutter-приложение
 ├── data/hal/                 # Hardware Abstraction Layer
 │   ├── mock_hal.dart         # Симуляция для разработки
-│   ├── usb_hal.dart          # USB подключение (V802)
-│   └── ble_hal.dart          # BLE подключение (планируется)
+│   ├── usb_hal_windows.dart  # USB подключение и recovery логика для desktop
+│   └── ble_hal.dart          # BLE подключение (framed binary packet v1)
 ├── domain/
 │   ├── entities/             # Модели данных
 │   └── math/                 # LTTB, статистика
@@ -75,6 +82,13 @@ firmware/                     # Прошивка ESP32-S3
 tools/
 └── sensor-debug.html         # Отладка USB-датчиков в браузере
 ```
+
+## 🔐 Статус протокола
+
+- USB/Serial legacy-датчики работают через текстовый поток, совместимый с текущими HAL-парсерами.
+- ESP32-S3 мультидатчик по BLE сейчас использует **framed binary packet v1**.
+- [firmware/proto/sensor_data.proto](firmware/proto/sensor_data.proto) сохраняется как логическая схема полей и база для дальнейшего расширения протокола.
+- В прошивке transport queue BLE и history buffer для Web UI/CSV разделены: Web fallback не теряет историю при активном BLE-клиенте.
 
 ## 🎯 Режимы работы
 

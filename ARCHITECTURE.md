@@ -50,7 +50,7 @@
 | BLE Stack | **NimBLE** | Легче и быстрее Bluedroid |
 | Web Server | **ESPAsyncWebServer** | Fallback UI без приложения |
 | OTA | ESP-IDF OTA | Обновление прошивки по воздуху |
-| Протокол | **Protobuf** (nanopb) | Компактнее JSON в 5-10 раз |
+| Протокол | **Framed binary packet v1** (runtime BLE) + protobuf schema (логическая модель) | Минимальный overhead для realtime BLE и предсказуемый фиксированный размер пакета |
 
 ### 2.3 Backend (опционально)
 
@@ -76,7 +76,7 @@ lib/
 ├── data/
 │   ├── hal/                # Hardware Abstraction Layer
 │   │   ├── ble_hal.dart          # BLE реализация
-│   │   ├── usb_hal.dart          # USB реализация  
+│   │   ├── usb_hal_windows.dart  # USB реализация desktop  
 │   │   ├── mock_hal.dart         # Симуляция для тестов
 │   │   └── hal_interface.dart    # Абстрактный интерфейс
 │   │
@@ -187,7 +187,7 @@ firmware/
 Service: Physics Lab (UUID: 0x1820)
 ├── Characteristic: Sensor Data (UUID: 0x2A00)
 │   ├── Properties: Notify
-│   └── Format: Protobuf binary
+│   └── Format: Framed binary packet v1 (fixed-size packet + protocol header)
 │
 ├── Characteristic: Command (UUID: 0x2A01)
 │   ├── Properties: Write
@@ -203,6 +203,10 @@ Service: Physics Lab (UUID: 0x1820)
 ```
 
 ### 5.2 Protobuf Schema
+
+`sensor_data.proto` описывает **логическую модель полей** и используется как схема
+для совместимости, документации и возможного будущего nanopb-слоя. Текущий runtime BLE
+обмен не сериализуется через Protobuf: на устройстве используется framed fixed-size binary packet.
 
 ```protobuf
 syntax = "proto3";
@@ -286,7 +290,7 @@ class SensorIsolate {
   
   static void _isolateEntry(_IsolateParams params) {
     // Бесконечный цикл чтения данных
-    // Парсинг Protobuf
+    // Парсинг framed binary packet v1 / текстового serial потока
     // Применение фильтра Калмана
     // Отправка готовых данных в UI
   }
@@ -300,8 +304,8 @@ class SensorIsolate {
 Когда приложение недоступно, учитель подключается к Wi-Fi датчика и открывает браузер:
 
 ```
-SSID: PhysicsLab_XXXX
-Password: 12345678
+SSID: PhysicsLab
+Password: Lab_XXXXXXXX
 URL: http://192.168.4.1
 ```
 
@@ -470,7 +474,7 @@ class AppColors {
 
 ### Этап 1: MVP (3 месяца)
 - [ ] Прошивка ESP32-S3 с базовыми датчиками (V/A/T/P)
-- [ ] Протокол BLE + Protobuf
+- [ ] Протокол BLE + framed binary packet v1
 - [ ] Flutter-приложение (Android + Windows)
 - [ ] Базовые функции: подключение, график, таблица, экспорт CSV
 

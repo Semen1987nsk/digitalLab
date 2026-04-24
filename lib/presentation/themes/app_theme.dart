@@ -1,119 +1,189 @@
 import 'package:flutter/material.dart';
 
-/// Цветовая схема приложения
+/// Цветовая схема приложения — вдохновлена Vernier GA и Phyphox.
+/// Тёмная тема по умолчанию — экономия батареи, забота о зрении (СанПиН).
 class AppColors {
-  // Основные цвета
-  static const background = Color(0xFF121212);
-  static const surface = Color(0xFF1E1E1E);
-  static const surfaceLight = Color(0xFF2D2D2D);
-  static const primary = Color(0xFF4CAF50);  // Зелёный — наука
-  static const primaryDark = Color(0xFF388E3C);
-  static const accent = Color(0xFF00BCD4);
-  
-  // Текст
-  static const textPrimary = Color(0xFFFFFFFF);
-  static const textSecondary = Color(0xFFB3B3B3);
-  static const textHint = Color(0xFF666666);
-  
-  // Датчики (цвета для графиков)
-  static const voltage = Color(0xFFFFEB3B);      // Жёлтый
-  static const current = Color(0xFF2196F3);      // Синий
-  static const temperature = Color(0xFFF44336); // Красный
-  static const pressure = Color(0xFF9C27B0);    // Фиолетовый
-  static const distance = Color(0xFF00BCD4);    // Голубой
-  static const acceleration = Color(0xFFFF9800); // Оранжевый
-  
-  // Статусы
-  static const success = Color(0xFF4CAF50);
-  static const warning = Color(0xFFFFC107);
-  static const error = Color(0xFFF44336);
-  static const disconnected = Color(0xFF666666);
+  AppColors._();
+
+  // ── Поверхности ──────────────────────────────────────────────
+  static const background = Color(0xFF0D1117);
+  static const surface = Color(0xFF161B22);
+  static const surfaceLight = Color(0xFF21262D);
+  static const surfaceBright = Color(0xFF30363D);
+  static const cardBorder = Color(0xFF30363D);
+
+  // ── Акценты ──────────────────────────────────────────────────
+  static const primary = Color(0xFF58A6FF);       // Наука / связь
+  static const primaryDark = Color(0xFF388BFD);
+  static const accent = Color(0xFF3FB950);         // Успех / экшен
+  static const accentSoft = Color(0xFF238636);
+
+  // ── Текст ────────────────────────────────────────────────────
+  static const textPrimary = Color(0xFFE6EDF3);
+  static const textSecondary = Color(0xFF8B949E);
+  static const textHint = Color(0xFF484F58);
+
+  // ── Статусы ──────────────────────────────────────────────────
+  static const success = Color(0xFF3FB950);
+  static const warning = Color(0xFFD29922);
+  static const error = Color(0xFFF85149);
+  static const info = Color(0xFF58A6FF);
+  static const disconnected = Color(0xFF484F58);
+
+  // ── Версии продукта ──────────────────────────────────────────
+  static const versionBase = Color(0xFF58A6FF);
+  static const version360 = Color(0xFFA371F7);
+  static const version360Badge = Color(0xFF6E40C9);
 }
 
 class AppTheme {
+  AppTheme._();
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.background,
-      
+
       colorScheme: const ColorScheme.dark(
         primary: AppColors.primary,
         secondary: AppColors.accent,
         surface: AppColors.surface,
         error: AppColors.error,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
+        onSurface: AppColors.textPrimary,
+        onError: Colors.white,
       ),
-      
+
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
+        scrolledUnderElevation: 1,
         titleTextStyle: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
+          letterSpacing: -0.5,
         ),
       ),
-      
+
       cardTheme: CardThemeData(
         color: AppColors.surface,
-        elevation: 4,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AppColors.cardBorder, width: 1),
         ),
+        margin: EdgeInsets.zero,
       ),
-      
+
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColors.accent,
           foregroundColor: Colors.white,
-          minimumSize: const Size(120, 56), // Большие кнопки для тач-экранов
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size(120, 52),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
+          elevation: 0,
           textStyle: const TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
           ),
         ),
       ),
-      
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        extendedPadding: EdgeInsets.symmetric(horizontal: 24),
+
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.textPrimary,
+          minimumSize: const Size(100, 52),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          side: const BorderSide(color: AppColors.surfaceBright),
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ),
-      
+
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.surfaceLight,
+        selectedColor: AppColors.primary.withValues(alpha: 0.15),
+        labelStyle: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        side: const BorderSide(color: AppColors.cardBorder),
+      ),
+
+      dividerTheme: const DividerThemeData(
+        color: AppColors.cardBorder,
+        thickness: 1,
+        space: 1,
+      ),
+
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
           fontSize: 48,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
+          letterSpacing: -1.5,
         ),
         headlineMedium: TextStyle(
-          fontSize: 32,
+          fontSize: 28,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
+          letterSpacing: -0.5,
         ),
-        titleLarge: TextStyle(
+        headlineSmall: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        bodyLarge: TextStyle(
-          fontSize: 18,
+        titleLarge: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
+          letterSpacing: -0.3,
         ),
-        bodyMedium: TextStyle(
-          fontSize: 16,
-          color: AppColors.textSecondary,
-        ),
-        labelLarge: TextStyle(
+        titleMedium: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 16,
+          color: AppColors.textPrimary,
+          height: 1.5,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 14,
+          color: AppColors.textSecondary,
+          height: 1.5,
+        ),
+        bodySmall: TextStyle(
+          fontSize: 12,
+          color: AppColors.textHint,
+          height: 1.4,
+        ),
+        labelLarge: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary,
+          letterSpacing: 0.1,
+        ),
+        labelMedium: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textSecondary,
         ),
       ),
     );

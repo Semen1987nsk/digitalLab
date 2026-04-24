@@ -1,69 +1,72 @@
 import 'dart:math';
-
-/// Точка данных для графика
-class DataPoint {
-  final double x;
-  final double y;
-  
-  const DataPoint(this.x, this.y);
-}
+import 'dart:typed_data';
 
 /// Алгоритм LTTB (Largest-Triangle-Three-Buckets)
 /// Уменьшает количество точек для отрисовки без потери визуальной формы графика
 /// 
-/// Пример: 100,000 точек → 1,000 точек
-/// Производительность на старых ПК увеличивается в 100 раз
+/// Оптимизированная версия: использует Float64List для минимизации нагрузки на GC.
+/// Входные и выходные данные представлены в виде interleaved массива: [x0, y0, x1, y1, ...]
 class LTTB {
   /// Прореживание данных с сохранением формы
   /// 
-  /// [data] - исходные точки
+  /// [data] - исходные точки в формате [x0, y0, x1, y1, ...]
   /// [threshold] - желаемое количество точек на выходе
-  static List<DataPoint> downsample(List<DataPoint> data, int threshold) {
-    if (data.length <= threshold || threshold < 3) {
-      return List.from(data);
+  static Float64List downsample(Float64List data, int threshold) {
+    final int dataLength = data.length ~/ 2;
+    if (dataLength <= threshold || threshold < 3) {
+      return Float64List.fromList(data);
     }
     
-    final sampled = <DataPoint>[];
+    final Float64List sampled = Float64List(threshold * 2);
+    int sampledIndex = 0;
     
     // Всегда сохраняем первую точку
-    sampled.add(data.first);
+    sampled[sampledIndex++] = data[0];
+    sampled[sampledIndex++] = data[1];
     
     // Размер корзины (bucket)
-    final bucketSize = (data.length - 2) / (threshold - 2);
+    final double bucketSize = (dataLength - 2) / (threshold - 2);
     
     int a = 0; // Индекс предыдущей выбранной точки
     
     for (int i = 0; i < threshold - 2; i++) {
-      // Границы текущей корзины
-      final avgRangeStart = ((i + 1) * bucketSize).floor() + 1;
-      final avgRangeEnd = ((i + 2) * bucketSize).floor() + 1;
-      final avgRangeLength = avgRangeEnd - avgRangeStart;
+      // Границы следующей корзины для расчета среднего
+      final int avgRangeStart = ((i + 1) * bucketSize).floor() + 1;
+      final int avgRangeEnd = ((i + 2) * bucketSize).floor() + 1;
       
-      // Вычисляем среднюю точку следующей корзины
-      double avgX = 0;
-      double avgY = 0;
-      for (int j = avgRangeStart; j < avgRangeEnd && j < data.length; j++) {
-        avgX += data[j].x;
-        avgY += data[j].y;
+      final int actualAvgRangeEnd = avgRangeEnd < dataLength ? avgRangeEnd : dataLength;
+      final int avgRangeLength = actualAvgRangeEnd - avgRangeStart;
+      
+      double avgX = 0.0;
+      double avgY = 0.0;
+      
+      if (avgRangeLength > 0) {
+        for (int j = avgRangeStart; j < actualAvgRangeEnd; j++) {
+          avgX += data[j * 2];
+          avgY += data[j * 2 + 1];
+        }
+        avgX /= avgRangeLength;
+        avgY /= avgRangeLength;
       }
-      avgX /= avgRangeLength;
-      avgY /= avgRangeLength;
       
       // Границы текущей корзины для поиска
-      final rangeStart = ((i) * bucketSize).floor() + 1;
-      final rangeEnd = ((i + 1) * bucketSize).floor() + 1;
+      final int rangeStart = ((i) * bucketSize).floor() + 1;
+      final int rangeEnd = ((i + 1) * bucketSize).floor() + 1;
+      final int actualRangeEnd = rangeEnd < dataLength ? rangeEnd : dataLength;
       
-      // Ищем точку с максимальной площадью треугольника
-      double maxArea = -1;
+      double maxArea = -1.0;
       int maxAreaIndex = rangeStart;
       
-      final pointAX = data[a].x;
-      final pointAY = data[a].y;
+      final double pointAX = data[a * 2];
+      final double pointAY = data[a * 2 + 1];
       
-      for (int j = rangeStart; j < rangeEnd && j < data.length; j++) {
+      for (int j = rangeStart; j < actualRangeEnd; j++) {
+        final double pX = data[j * 2];
+        final double pY = data[j * 2 + 1];
+        
         // Площадь треугольника (A, B, Average)
-        final area = ((pointAX - avgX) * (data[j].y - pointAY) -
-                     (pointAX - data[j].x) * (avgY - pointAY)).abs() * 0.5;
+        final double area = ((pointAX - avgX) * (pY - pointAY) -
+                             (pointAX - pX) * (avgY - pointAY)).abs() * 0.5;
         
         if (area > maxArea) {
           maxArea = area;
@@ -71,39 +74,16 @@ class LTTB {
         }
       }
       
-      sampled.add(data[maxAreaIndex]);
+      sampled[sampledIndex++] = data[maxAreaIndex * 2];
+      sampled[sampledIndex++] = data[maxAreaIndex * 2 + 1];
       a = maxAreaIndex;
     }
     
     // Всегда сохраняем последнюю точку
-    sampled.add(data.last);
+    sampled[sampledIndex++] = data[(dataLength - 1) * 2];
+    sampled[sampledIndex++] = data[(dataLength - 1) * 2 + 1];
     
     return sampled;
-  }
-  
-  /// Быстрая версия для потоковых данных
-  /// Возвращает индексы точек, которые нужно сохранить
-  static List<int> downsampleIndices(int dataLength, int threshold) {
-    if (dataLength <= threshold || threshold < 3) {
-      return List.generate(dataLength, (i) => i);
-    }
-    
-    final indices = <int>[0];
-    final bucketSize = (dataLength - 2) / (threshold - 2);
-    
-    for (int i = 0; i < threshold - 2; i++) {
-      final rangeStart = ((i) * bucketSize).floor() + 1;
-      final rangeEnd = ((i + 1) * bucketSize).floor() + 1;
-      
-      // Берём точку из середины корзины (упрощённая версия)
-      final midIndex = ((rangeStart + rangeEnd) / 2).floor();
-      if (midIndex < dataLength) {
-        indices.add(midIndex);
-      }
-    }
-    
-    indices.add(dataLength - 1);
-    return indices;
   }
 }
 

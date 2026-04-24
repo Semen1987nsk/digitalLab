@@ -219,49 +219,151 @@
         </div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Данные для графика
-        const chartData = {
-            labels: [],
-            datasets: [{
-                label: 'Расстояние, мм',
-                data: [],
-                borderColor: '#00BCD4',
-                backgroundColor: 'rgba(0, 188, 212, 0.1)',
-                fill: true,
-                tension: 0.2,
-                pointRadius: 0,
-            }]
-        };
+        // =====================================================================
+        // Встроенный лёгкий движок графиков (Canvas2D)
+        // Не требует CDN — работает полностью офлайн на ESP32
+        // =====================================================================
+        class MiniChart {
+            constructor(canvasId, options = {}) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.data = [];
+                this.maxPoints = options.maxPoints || 200;
+                this.lineColor = options.lineColor || '#00BCD4';
+                this.fillColor = options.fillColor || 'rgba(0, 188, 212, 0.1)';
+                this.gridColor = options.gridColor || 'rgba(255,255,255,0.1)';
+                this.textColor = options.textColor || '#b3b3b3';
+                this.labelX = options.labelX || 'Время, с';
+                this.labelY = options.labelY || 'Расстояние, мм';
+                this.padding = { top: 20, right: 20, bottom: 40, left: 60 };
+                this._resize();
+                window.addEventListener('resize', () => this._resize());
+            }
+            
+            _resize() {
+                const rect = this.canvas.parentElement.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                this.draw();
+            }
+            
+            addPoint(x, y) {
+                this.data.push({ x, y });
+                if (this.data.length > this.maxPoints) {
+                    this.data.shift();
+                }
+                this.draw();
+            }
+            
+            clear() {
+                this.data = [];
+                this.draw();
+            }
+            
+            draw() {
+                const { ctx, canvas, padding, data } = this;
+                const w = canvas.width;
+                const h = canvas.height;
+                const plotW = w - padding.left - padding.right;
+                const plotH = h - padding.top - padding.bottom;
+                
+                // Очистка
+                ctx.clearRect(0, 0, w, h);
+                
+                if (data.length < 2) {
+                    ctx.fillStyle = this.textColor;
+                    ctx.font = '14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Нажмите "Старт" для начала', w / 2, h / 2);
+                    return;
+                }
+                
+                // Диапазоны данных
+                let minX = data[0].x, maxX = data[data.length - 1].x;
+                let minY = Infinity, maxY = -Infinity;
+                for (const p of data) {
+                    if (p.y < minY) minY = p.y;
+                    if (p.y > maxY) maxY = p.y;
+                }
+                // Минимальный диапазон Y — 20 мм
+                const rangeY = maxY - minY;
+                if (rangeY < 20) {
+                    const center = (maxY + minY) / 2;
+                    minY = center - 10;
+                    maxY = center + 10;
+                }
+                const padY = (maxY - minY) * 0.05;
+                minY -= padY;
+                maxY += padY;
+                
+                const scaleX = (v) => padding.left + ((v - minX) / (maxX - minX || 1)) * plotW;
+                const scaleY = (v) => padding.top + plotH - ((v - minY) / (maxY - minY || 1)) * plotH;
+                
+                // Сетка (5 линий)
+                ctx.strokeStyle = this.gridColor;
+                ctx.lineWidth = 1;
+                ctx.font = '10px sans-serif';
+                ctx.fillStyle = this.textColor;
+                ctx.textAlign = 'right';
+                for (let i = 0; i <= 4; i++) {
+                    const val = minY + (maxY - minY) * (i / 4);
+                    const y = scaleY(val);
+                    ctx.beginPath();
+                    ctx.moveTo(padding.left, y);
+                    ctx.lineTo(w - padding.right, y);
+                    ctx.stroke();
+                    ctx.fillText(val.toFixed(1), padding.left - 5, y + 3);
+                }
+                ctx.textAlign = 'center';
+                for (let i = 0; i <= 4; i++) {
+                    const val = minX + (maxX - minX) * (i / 4);
+                    const x = scaleX(val);
+                    ctx.beginPath();
+                    ctx.moveTo(x, padding.top);
+                    ctx.lineTo(x, h - padding.bottom);
+                    ctx.stroke();
+                    ctx.fillText(val.toFixed(1), x, h - padding.bottom + 15);
+                }
+                
+                // Подписи осей
+                ctx.fillStyle = this.textColor;
+                ctx.font = '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.labelX, padding.left + plotW / 2, h - 5);
+                ctx.save();
+                ctx.translate(12, padding.top + plotH / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText(this.labelY, 0, 0);
+                ctx.restore();
+                
+                // Заливка
+                ctx.beginPath();
+                ctx.moveTo(scaleX(data[0].x), scaleY(minY));
+                for (const p of data) ctx.lineTo(scaleX(p.x), scaleY(p.y));
+                ctx.lineTo(scaleX(data[data.length - 1].x), scaleY(minY));
+                ctx.closePath();
+                ctx.fillStyle = this.fillColor;
+                ctx.fill();
+                
+                // Линия
+                ctx.beginPath();
+                ctx.moveTo(scaleX(data[0].x), scaleY(data[0].y));
+                for (let i = 1; i < data.length; i++) {
+                    ctx.lineTo(scaleX(data[i].x), scaleY(data[i].y));
+                }
+                ctx.strokeStyle = this.lineColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
         
         // Инициализация графика
-        const ctx = document.getElementById('chart').getContext('2d');
-        const chart = new Chart(ctx, {
-            type: 'line',
-            data: chartData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false,
-                scales: {
-                    x: {
-                        display: true,
-                        title: { display: true, text: 'Время, с', color: '#b3b3b3' },
-                        ticks: { color: '#b3b3b3' },
-                        grid: { color: 'rgba(255,255,255,0.1)' }
-                    },
-                    y: {
-                        display: true,
-                        title: { display: true, text: 'Расстояние, мм', color: '#b3b3b3' },
-                        ticks: { color: '#b3b3b3' },
-                        grid: { color: 'rgba(255,255,255,0.1)' }
-                    }
-                },
-                plugins: {
-                    legend: { display: false }
-                }
-            }
+        const chart = new MiniChart('chart', {
+            maxPoints: 200,
+            lineColor: '#00BCD4',
+            labelX: 'Время, с',
+            labelY: 'Расстояние, мм',
         });
         
         let measuring = false;
@@ -283,18 +385,7 @@
                 
                 if (measuring) {
                     const time = (Date.now() - startTime) / 1000;
-                    
-                    // Добавляем точку на график
-                    chartData.labels.push(time.toFixed(1));
-                    chartData.datasets[0].data.push(data.distance_mm);
-                    
-                    // Ограничиваем количество точек (LTTB-подобное прореживание)
-                    if (chartData.labels.length > 200) {
-                        chartData.labels.shift();
-                        chartData.datasets[0].data.shift();
-                    }
-                    
-                    chart.update('none');
+                    chart.addPoint(time, data.distance_mm);
                     measurementCount++;
                 }
             } catch (e) {
@@ -306,8 +397,7 @@
             measuring = true;
             startTime = Date.now();
             measurementCount = 0;
-            chartData.labels = [];
-            chartData.datasets[0].data = [];
+            chart.clear();
             
             document.getElementById('btn-start').style.display = 'none';
             document.getElementById('btn-stop').style.display = 'block';

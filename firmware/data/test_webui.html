@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Web UI Test — Цифровая Лаборатория</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --surface: #1e1e1e;
+            --surface-light: #2d2d2d;
+            --primary: #4CAF50;
+            --text: #ffffff;
+            --text-secondary: #b3b3b3;
+            --distance: #00BCD4;
+            --temperature: #F44336;
+            --voltage: #FFEB3B;
+            --pressure: #9C27B0;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        /* ── Test banner ─────────────────────────────────── */
+        .test-banner {
+            background: linear-gradient(135deg, #1a237e, #4a148c);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: #b3b3ff;
+        }
+        .test-banner strong { color: #fff; }
+        .test-banner code { 
+            background: rgba(255,255,255,0.1); 
+            padding: 2px 6px; border-radius: 4px; 
+        }
+        
+        .header { text-align: center; margin-bottom: 24px; }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .header .status {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 16px; background: var(--surface);
+            border-radius: 20px; font-size: 14px;
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--primary); animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        /* ── Sensor grid ─────────────────────────────────── */
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .sensor-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+        .sensor-card .label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .sensor-card .value {
+            font-size: 32px;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+        }
+        .sensor-card .unit {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }
+        .sensor-card.voltage .value { color: var(--voltage); }
+        .sensor-card.temperature .value { color: var(--temperature); }
+        .sensor-card.pressure .value { color: var(--pressure); }
+        .sensor-card.distance .value { color: var(--distance); }
+        
+        .controls { display: flex; gap: 12px; margin-bottom: 24px; }
+        .btn {
+            flex: 1; padding: 14px 20px; font-size: 16px; font-weight: 600;
+            border: none; border-radius: 12px; cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: var(--surface-light); color: var(--text); }
+        .btn-danger { background: #F44336; color: white; }
+        
+        .chart-container {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 24px;
+            height: 300px;
+        }
+        #chart { width: 100%; height: 100%; }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .info-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .info-card .label { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
+        .info-card .value { font-size: 20px; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="test-banner">
+        <strong>🧪 ТЕСТОВЫЙ РЕЖИМ</strong> — Mock API, реальный UI. 
+        На ESP32: <code>http://192.168.4.1</code> · 
+        Здесь данные генерируются JavaScript'ом.
+    </div>
+
+    <div class="header">
+        <h1>🔬 ЛАБОСФЕРА</h1>
+        <div class="status">
+            <div class="status-dot"></div>
+            <span id="status-text">Подключено (mock)</span>
+        </div>
+    </div>
+    
+    <!-- ── Live sensor values ─────────────────────────────── -->
+    <div class="sensor-grid">
+        <div class="sensor-card voltage">
+            <div class="label">⚡ Напряжение</div>
+            <div><span class="value" id="voltage-value">---</span><span class="unit">В</span></div>
+        </div>
+        <div class="sensor-card temperature">
+            <div class="label">🌡 Температура</div>
+            <div><span class="value" id="temp-value">---</span><span class="unit">°C</span></div>
+        </div>
+        <div class="sensor-card pressure">
+            <div class="label">📊 Давление</div>
+            <div><span class="value" id="pressure-value">---</span><span class="unit">гПа</span></div>
+        </div>
+        <div class="sensor-card distance">
+            <div class="label">📏 Расстояние</div>
+            <div><span class="value" id="distance-value">---</span><span class="unit">мм</span></div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button class="btn btn-primary" id="btn-start" onclick="startMeasurement()">▶ Старт</button>
+        <button class="btn btn-danger" id="btn-stop" onclick="stopMeasurement()" style="display:none">■ Стоп</button>
+        <button class="btn btn-secondary" onclick="calibrate()">⚙ Ноль</button>
+        <button class="btn btn-secondary" onclick="exportCSV()">📥 CSV</button>
+    </div>
+    
+    <div class="chart-container">
+        <canvas id="chart"></canvas>
+    </div>
+    
+    <div class="info-grid">
+        <div class="info-card">
+            <div class="label">Измерений</div>
+            <div class="value" id="count-value">0</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Частота</div>
+            <div class="value" id="rate-value">10 Гц</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Батарея</div>
+            <div class="value" id="battery-value">87%</div>
+        </div>
+        <div class="info-card">
+            <div class="label">Прошивка</div>
+            <div class="value" id="version-value">1.4.0</div>
+        </div>
+    </div>
+    
+    <script>
+        // =================================================================
+        //  MOCK API — симуляция данных ESP32 для тестирования UI
+        // =================================================================
+        const MockSensor = {
+            voltage: 2.51,
+            temperature: 27.2,
+            pressure: 993.8,
+            distance: 150,
+            timestamp: 0,
+            bufferCount: 0,
+            
+            // Генерация реалистичного шума
+            noise(base, amplitude) {
+                return base + (Math.random() - 0.5) * amplitude;
+            },
+            
+            tick() {
+                this.timestamp += 100;
+                this.bufferCount++;
+                return {
+                    timestamp_ms: this.timestamp,
+                    voltage_v: this.noise(this.voltage, 0.03),
+                    current_a: this.noise(0.15, 0.005),
+                    power_w: this.noise(0.38, 0.01),
+                    temperature_c: this.noise(this.temperature, 0.15),
+                    pressure_pa: this.noise(this.pressure * 100, 50),
+                    humidity_pct: this.noise(45, 2),
+                    accel_x: this.noise(0, 0.05),
+                    accel_y: this.noise(0, 0.05),
+                    accel_z: this.noise(9.81, 0.1),
+                    gyro_x: this.noise(0, 1),
+                    gyro_y: this.noise(0, 1),
+                    gyro_z: this.noise(0, 1),
+                    thermocouple_c: this.noise(25, 0.5),
+                    distance_mm: this.noise(this.distance, 2),
+                    buffer_count: this.bufferCount,
+                };
+            },
+            
+            // Медленный дрейф (имитация реального эксперимента)
+            drift() {
+                this.temperature += (Math.random() - 0.48) * 0.02;
+                this.voltage += (Math.random() - 0.5) * 0.005;
+                this.distance += Math.sin(Date.now() / 3000) * 0.5;
+            }
+        };
+        
+        // =================================================================
+        //  CHART ENGINE (Canvas2D, no dependencies)
+        // =================================================================
+        class MiniChart {
+            constructor(canvasId, options = {}) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.data = [];
+                this.maxPoints = options.maxPoints || 200;
+                this.lineColor = options.lineColor || '#00BCD4';
+                this.fillColor = options.fillColor || 'rgba(0, 188, 212, 0.1)';
+                this.gridColor = options.gridColor || 'rgba(255,255,255,0.1)';
+                this.textColor = options.textColor || '#b3b3b3';
+                this.labelX = options.labelX || 'Время, с';
+                this.labelY = options.labelY || 'Напряжение, В';
+                this.padding = { top: 20, right: 20, bottom: 40, left: 60 };
+                this._resize();
+                window.addEventListener('resize', () => this._resize());
+            }
+            _resize() {
+                const rect = this.canvas.parentElement.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                this.draw();
+            }
+            addPoint(x, y) {
+                this.data.push({ x, y });
+                if (this.data.length > this.maxPoints) this.data.shift();
+                this.draw();
+            }
+            clear() { this.data = []; this.draw(); }
+            draw() {
+                const { ctx, canvas, padding, data } = this;
+                const w = canvas.width, h = canvas.height;
+                const plotW = w - padding.left - padding.right;
+                const plotH = h - padding.top - padding.bottom;
+                ctx.clearRect(0, 0, w, h);
+                if (data.length < 2) {
+                    ctx.fillStyle = this.textColor;
+                    ctx.font = '14px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Нажмите "Старт" для начала', w / 2, h / 2);
+                    return;
+                }
+                let minX = data[0].x, maxX = data[data.length - 1].x;
+                let minY = Infinity, maxY = -Infinity;
+                for (const p of data) { if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; }
+                const rangeY = maxY - minY;
+                if (rangeY < 0.1) { const c = (maxY + minY) / 2; minY = c - 0.05; maxY = c + 0.05; }
+                const padY = (maxY - minY) * 0.05; minY -= padY; maxY += padY;
+                const scaleX = v => padding.left + ((v - minX) / (maxX - minX || 1)) * plotW;
+                const scaleY = v => padding.top + plotH - ((v - minY) / (maxY - minY || 1)) * plotH;
+                // Grid
+                ctx.strokeStyle = this.gridColor; ctx.lineWidth = 1;
+                ctx.font = '10px sans-serif'; ctx.fillStyle = this.textColor;
+                ctx.textAlign = 'right';
+                for (let i = 0; i <= 4; i++) {
+                    const val = minY + (maxY - minY) * (i / 4), y = scaleY(val);
+                    ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(w - padding.right, y); ctx.stroke();
+                    ctx.fillText(val.toFixed(2), padding.left - 5, y + 3);
+                }
+                ctx.textAlign = 'center';
+                for (let i = 0; i <= 4; i++) {
+                    const val = minX + (maxX - minX) * (i / 4), x = scaleX(val);
+                    ctx.beginPath(); ctx.moveTo(x, padding.top); ctx.lineTo(x, h - padding.bottom); ctx.stroke();
+                    ctx.fillText(val.toFixed(1), x, h - padding.bottom + 15);
+                }
+                // Axis labels
+                ctx.fillStyle = this.textColor; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText(this.labelX, padding.left + plotW / 2, h - 5);
+                ctx.save(); ctx.translate(12, padding.top + plotH / 2);
+                ctx.rotate(-Math.PI / 2); ctx.fillText(this.labelY, 0, 0); ctx.restore();
+                // Fill
+                ctx.beginPath(); ctx.moveTo(scaleX(data[0].x), scaleY(minY));
+                for (const p of data) ctx.lineTo(scaleX(p.x), scaleY(p.y));
+                ctx.lineTo(scaleX(data[data.length - 1].x), scaleY(minY));
+                ctx.closePath(); ctx.fillStyle = this.fillColor; ctx.fill();
+                // Line
+                ctx.beginPath(); ctx.moveTo(scaleX(data[0].x), scaleY(data[0].y));
+                for (let i = 1; i < data.length; i++) ctx.lineTo(scaleX(data[i].x), scaleY(data[i].y));
+                ctx.strokeStyle = this.lineColor; ctx.lineWidth = 2; ctx.stroke();
+            }
+        }
+        
+        const chart = new MiniChart('chart', {
+            maxPoints: 200, lineColor: '#FFEB3B', fillColor: 'rgba(255,235,59,0.08)',
+            labelX: 'Время, с', labelY: 'Напряжение, В'
+        });
+        
+        let measuring = false;
+        let startTime = 0;
+        let intervalId = null;
+        
+        function updateUI() {
+            MockSensor.drift();
+            const d = MockSensor.tick();
+            
+            document.getElementById('voltage-value').textContent = d.voltage_v.toFixed(2);
+            document.getElementById('temp-value').textContent = d.temperature_c.toFixed(1);
+            document.getElementById('pressure-value').textContent = (d.pressure_pa / 100).toFixed(1);
+            document.getElementById('distance-value').textContent = d.distance_mm.toFixed(0);
+            document.getElementById('count-value').textContent = d.buffer_count;
+            
+            if (measuring) {
+                const t = (Date.now() - startTime) / 1000;
+                chart.addPoint(t, d.voltage_v);
+            }
+        }
+        
+        function startMeasurement() {
+            measuring = true;
+            startTime = Date.now();
+            MockSensor.bufferCount = 0;
+            chart.clear();
+            document.getElementById('btn-start').style.display = 'none';
+            document.getElementById('btn-stop').style.display = 'block';
+        }
+        
+        function stopMeasurement() {
+            measuring = false;
+            document.getElementById('btn-start').style.display = 'block';
+            document.getElementById('btn-stop').style.display = 'none';
+        }
+        
+        function calibrate() {
+            MockSensor.voltage = 0;
+            MockSensor.distance = 0;
+            alert('✅ Калибровка выполнена (нулевое смещение)');
+        }
+        
+        function exportCSV() {
+            let csv = 'time_s,voltage_v\n';
+            chart.data.forEach(p => csv += `${p.x.toFixed(3)},${p.y.toFixed(4)}\n`);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'labosfera_data.csv';
+            a.click();
+        }
+        
+        // Polling 10Hz (same as ESP32)
+        setInterval(updateUI, 100);
+        updateUI();
+    </script>
+</body>
+</html>

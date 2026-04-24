@@ -1,78 +1,14 @@
+import 'dart:async';
+import 'dart:isolate';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 
-/// Тип COM-порта
-enum PortType {
-  ftdi,        // FTDI чип (наш датчик!)
-  arduino,     // Arduino (CH340, CP210x)
-  bluetooth,   // Bluetooth Serial
-  builtin,     // Встроенный порт (COM1 и т.д.)
-  virtual,     // Виртуальный порт
-  unknown,     // Неизвестный тип
-}
+import 'port_connection_manager.dart';
+import 'port_types.dart';
 
-/// Статус доступности порта
-enum PortAvailability {
-  available,      // Можно открыть
-  accessDenied,   // errno=5 - нет прав или занят
-  busy,           // Порт занят другой программой
-  error,          // Другая ошибка
-  untested,       // Ещё не проверяли
-}
-
-/// Полная информация о COM-порте
-class PortInfo {
-  final String name;              // "COM3"
-  final String description;       // "USB Serial Port"
-  final String manufacturer;      // "FTDI"
-  final PortType type;            // ftdi
-  final PortAvailability availability;
-  final String? errorMessage;     // Сообщение об ошибке если есть
-  final int? vendorId;
-  final int? productId;
-  
-  const PortInfo({
-    required this.name,
-    required this.description,
-    required this.manufacturer,
-    required this.type,
-    required this.availability,
-    this.errorMessage,
-    this.vendorId,
-    this.productId,
-  });
-  
-  /// Это вероятно наш датчик?
-  bool get isLikelyOurSensor => type == PortType.ftdi;
-  
-  /// Можно ли подключиться?
-  bool get canConnect => availability == PortAvailability.available;
-  
-  /// Человекочитаемое описание типа
-  String get typeDescription {
-    switch (type) {
-      case PortType.ftdi: return 'FTDI (датчик)';
-      case PortType.arduino: return 'Arduino';
-      case PortType.bluetooth: return 'Bluetooth';
-      case PortType.builtin: return 'Встроенный';
-      case PortType.virtual: return 'Виртуальный';
-      case PortType.unknown: return 'Неизвестный';
-    }
-  }
-  
-  /// Человекочитаемый статус
-  String get availabilityDescription {
-    switch (availability) {
-      case PortAvailability.available: return '✓ Доступен';
-      case PortAvailability.accessDenied: return '✗ Нет доступа';
-      case PortAvailability.busy: return '✗ Занят';
-      case PortAvailability.error: return '✗ Ошибка';
-      case PortAvailability.untested: return '? Не проверен';
-    }
-  }
-  
-  @override
-  String toString() => '$name: $description ($typeDescription) - $availabilityDescription';
-}
+// Re-export types so existing `import 'port_scanner.dart'` still works.
+export 'port_types.dart';
 
 /// Сканер COM-портов с проверкой доступности
 class PortScanner {
@@ -83,7 +19,7 @@ class PortScanner {
   
   void _log(String message) {
     onLog?.call(message);
-    print('PortScanner: $message');
+    debugPrint('PortScanner: $message');
   }
   
   /// Очищает строку от невалидных UTF-8 символов (проблема кодировки Windows)
@@ -126,7 +62,15 @@ class PortScanner {
     return input.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
   }
   
-  /// Сканирует все порты и возвращает полную информацию
+  /// Сканирует все порты и возвращает полную информацию.
+  ///
+  /// ⚡ v2.0: Делегирует перечисление портов в
+  /// [PortConnectionManager.enumeratePortsAsync] — единый источник истины.
+  /// Ранее дублировал ту же логику через Isolate.run + Process.runSync,
+  /// что создавало риск расхождения и loader lock deadlock.
+  ///
+  /// Availability probe (openRead) по-прежнему выполняется в Isolate.run(),
+  /// но это **одноразовая** операция (не 9600/день), поэтому безопасно.
   Future<List<PortInfo>> scanPorts({
     bool testAvailability = true,
     void Function(String message)? onProgress,
@@ -135,90 +79,126 @@ class PortScanner {
       _log(message);
       onProgress?.call(message);
     }
-    
+
     log('Начало сканирования портов...');
-    
-    final List<PortInfo> result = [];
-    
+
     try {
-      final portNames = SerialPort.availablePorts;
-      log('Найдено ${portNames.length} портов');
-      
-      for (final portName in portNames) {
-        final portInfo = await _analyzePort(portName, testAvailability);
+      // ── Step 1: Enumerate ports via shared async registry scanner ──
+      final rawPorts = await PortConnectionManager.enumeratePortsAsync(
+        skipLegacyPorts: false, // PortScanner shows ALL ports including COM1/COM2
+      ).timeout(const Duration(seconds: 8));
+
+      // ── Step 2: Probe availability in background Isolate (FFI) ──
+      // openRead() is sync FFI (CreateFile) — must not run on main thread.
+      // Single Isolate.run() for all ports at once (not per-port).
+      final Map<String, (int, String?)> availabilityMap;
+      if (testAvailability && rawPorts.isNotEmpty) {
+        final portNames = rawPorts.map((r) => r.$1).toList();
+        availabilityMap = await Isolate.run(
+          () => _probeAvailabilitySync(portNames),
+        ).timeout(const Duration(seconds: 6));
+      } else {
+        availabilityMap = {};
+      }
+
+      // ── Step 3: Build PortInfo list on main thread (no FFI) ──
+      final result = <PortInfo>[];
+      for (final (name, vid, pid) in rawPorts) {
+        // Derive description/manufacturer from known VIDs
+        String description = '';
+        String manufacturer = '';
+        if (vid == 0x0403) {
+          description = 'USB Serial Port (FTDI)';
+          manufacturer = 'FTDI';
+        } else if (vid == 0x2341) {
+          description = 'Arduino USB Serial';
+          manufacturer = 'Arduino LLC';
+        } else if (vid == 0x1A86) {
+          description = 'USB-Serial CH340';
+          manufacturer = 'WCH';
+        } else if (vid == 0x10C4) {
+          description = 'USB Serial CP210x';
+          manufacturer = 'Silicon Labs';
+        } else if (name == 'COM1' || name == 'COM2') {
+          description = 'Built-in Serial Port';
+        }
+
+        final type = _detectPortType(name, description, manufacturer, vid);
+
+        final probe = availabilityMap[name];
+        final availability = probe != null
+            ? PortAvailability.values[probe.$1]
+            : PortAvailability.untested;
+        final error = probe?.$2;
+
+        final portInfo = PortInfo(
+          name: name,
+          description: _sanitizeString(description),
+          manufacturer: _sanitizeString(manufacturer),
+          type: type,
+          availability: availability,
+          errorMessage: error,
+          vendorId: vid == 0 ? null : vid,
+          productId: pid == 0 ? null : pid,
+        );
+
         result.add(portInfo);
         log('  $portInfo');
       }
-      
-      // Сортируем: FTDI порты первые, затем доступные
+
+      // Сортируем: наши датчики первые, затем доступные
       result.sort((a, b) {
-        // FTDI порты первые
         if (a.isLikelyOurSensor && !b.isLikelyOurSensor) return -1;
         if (!a.isLikelyOurSensor && b.isLikelyOurSensor) return 1;
-        // Затем по доступности
         if (a.canConnect && !b.canConnect) return -1;
         if (!a.canConnect && b.canConnect) return 1;
-        // Затем по имени
         return a.name.compareTo(b.name);
       });
-      
+
+      log('Сканирование завершено: ${result.length} портов');
+      return result;
+    } on TimeoutException {
+      log('Сканирование TIMEOUT (8s) — драйвер не отвечает');
+      return [];
     } catch (e) {
       log('Ошибка сканирования: $e');
+      return [];
     }
-    
-    log('Сканирование завершено: ${result.length} портов');
-    return result;
   }
-  
-  /// Анализирует один порт
-  Future<PortInfo> _analyzePort(String portName, bool testAvailability) async {
-    String description = '';
-    String manufacturer = '';
-    PortType type = PortType.unknown;
-    PortAvailability availability = PortAvailability.untested;
-    String? errorMessage;
-    int? vendorId;
-    int? productId;
-    
-    SerialPort? port;
-    
-    try {
-      port = SerialPort(portName);
-      
-      // Получаем информацию о порте
-      description = _sanitizeString(port.description ?? '');
-      manufacturer = _sanitizeString(port.manufacturer ?? '');
-      vendorId = port.vendorId;
-      productId = port.productId;
-      
-      // Определяем тип порта
-      type = _detectPortType(portName, description, manufacturer, vendorId);
-      
-      // Тестируем доступность если нужно
-      if (testAvailability) {
-        availability = await _testPortAvailability(port);
-        if (availability != PortAvailability.available) {
-          errorMessage = SerialPort.lastError?.message;
+
+  /// Проверяет доступность портов через openRead() в **ФОНОВОМ ИЗОЛЯТЕ**.
+  ///
+  /// Выполняется ОДИН РАЗ за сканирование (не per-port).
+  /// Возвращает Map<portName, (availabilityIndex, errorMessage?)>.
+  static Map<String, (int, String?)> _probeAvailabilitySync(
+    List<String> portNames,
+  ) {
+    final results = <String, (int, String?)>{};
+
+    for (final name in portNames) {
+      try {
+        final probePort = SerialPort(name);
+        final opened = probePort.openRead();
+        if (opened) {
+          results[name] = (PortAvailability.available.index, null);
+          try { probePort.close(); } catch (_) {}
+        } else {
+          final code = SerialPort.lastError?.errorCode ?? -1;
+          if (code == 5 || code == 13) {
+            results[name] = (PortAvailability.accessDenied.index, null);
+          } else if (code == 16) {
+            results[name] = (PortAvailability.busy.index, null);
+          } else {
+            results[name] = (PortAvailability.error.index, null);
+          }
         }
+        try { probePort.dispose(); } catch (_) {}
+      } catch (e) {
+        results[name] = (PortAvailability.error.index, e.toString());
       }
-      
-    } catch (e) {
-      errorMessage = e.toString();
-      availability = PortAvailability.error;
-    } finally {
-      try { port?.dispose(); } catch (_) {}
     }
-    
-    return PortInfo(
-      name: portName,
-      description: description,
-      manufacturer: manufacturer,
-      type: type,
-      availability: availability,
-      errorMessage: errorMessage,
-      vendorId: vendorId,
-      productId: productId,
-    );
+
+    return results;
   }
   
   /// Определяет тип порта по его характеристикам
@@ -234,13 +214,34 @@ class PortScanner {
       return PortType.ftdi;
     }
     
-    // Arduino / CH340 / CP210x
-    if (descLower.contains('ch340') ||
+    // Arduino UNO/Mega (VID: 0x2341 — Arduino LLC)
+    // Также CH340, CP210x (клоны)
+    if (vendorId == 0x2341 ||
+        descLower.contains('ch340') ||
         descLower.contains('cp210') ||
         descLower.contains('arduino') ||
+        mfrLower.contains('arduino') ||
         mfrLower.contains('wch') ||
         mfrLower.contains('silicon labs')) {
       return PortType.arduino;
+    }
+    
+    // CDC ACM / USB Serial (может быть Arduino UNO через usbser.sys)
+    // Только если VID указывает на Arduino-совместимое устройство
+    if (vendorId == 0x2341 || vendorId == 0x1A86 || vendorId == 0x10C4) {
+      return PortType.arduino;
+    }
+    
+    // FTDI по VID (если описание не помогло)
+    if (vendorId == 0x0403) {
+      return PortType.ftdi;
+    }
+    
+    // Неизвестный USB — НЕ считаем автоматически датчиком
+    if (descLower.contains('usb serial') ||
+        descLower.contains('usb-serial') ||
+        (descLower.isEmpty && vendorId != null && vendorId > 0)) {
+      return PortType.unknown;
     }
     
     // Bluetooth
@@ -275,61 +276,35 @@ class PortScanner {
     return PortType.unknown;
   }
   
-  /// Тестирует доступность порта (пытается открыть)
-  Future<PortAvailability> _testPortAvailability(SerialPort port) async {
-    try {
-      // Пробуем открыть на чтение
-      final opened = port.openRead();
-      
-      if (opened) {
-        port.close();
-        return PortAvailability.available;
-      }
-      
-      // Анализируем ошибку
-      final error = SerialPort.lastError;
-      if (error != null) {
-        final errno = error.errorCode;
-        // errno 5 = Access Denied (Windows)
-        // errno 13 = Permission denied (Linux)
-        if (errno == 5 || errno == 13) {
-          return PortAvailability.accessDenied;
-        }
-        // errno 16 = Device busy (Linux)
-        if (errno == 16) {
-          return PortAvailability.busy;
-        }
-      }
-      
-      return PortAvailability.error;
-      
-    } catch (e) {
-      return PortAvailability.error;
-    }
-  }
-  
   /// Находит лучший порт для датчика (автовыбор)
-  /// ВАЖНО: Возвращает только FTDI порты! Не возвращает случайные порты.
+  /// Приоритет: Arduino мультидатчик > FTDI датчик расстояния
   PortInfo? findBestSensorPort(List<PortInfo> ports) {
-    // 1. Ищем FTDI порт который доступен
+    // 1. Ищем Arduino мультидатчик (приоритет — больше датчиков)
     for (final port in ports) {
-      if (port.isLikelyOurSensor && port.canConnect) {
-        _log('Лучший порт (FTDI доступен): ${port.name}');
+      if (port.isArduinoMultisensor && port.canConnect) {
+        _log('Лучший порт (Arduino мультидатчик): ${port.name}');
         return port;
       }
     }
     
-    // 2. Ищем любой FTDI порт (даже недоступный - для диагностики)
+    // 2. Ищем FTDI датчик расстояния
+    for (final port in ports) {
+      if (port.isFtdiDistanceSensor && port.canConnect) {
+        _log('Лучший порт (FTDI расстояние): ${port.name}');
+        return port;
+      }
+    }
+    
+    // 3. Ищем любой наш порт (даже недоступный - для диагностики)
     for (final port in ports) {
       if (port.isLikelyOurSensor) {
-        _log('FTDI порт найден но недоступен: ${port.name} - ${port.availabilityDescription}');
+        _log('Датчик найден но недоступен: ${port.name} - ${port.availabilityDescription}');
         return port;
       }
     }
     
-    // ВАЖНО: НЕ возвращаем случайные порты!
-    // Если FTDI не найден - значит датчик не подключён
-    _log('Датчик FTDI не найден. Подключите датчик к USB.');
+    // Ничего не найдено
+    _log('Датчик не найден. Подключите мультидатчик к USB.');
     return null;
   }
 }

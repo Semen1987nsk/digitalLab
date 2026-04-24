@@ -1,5 +1,13 @@
 # 🔌 ПРОТОКОЛ СВЯЗИ — Техническая спецификация
 
+> Важно: этот документ содержит legacy-описание раннего USB/JSON протокола.
+>
+> Актуальный production runtime на March 2026:
+> - legacy USB/Serial sensors: текстовый поток / строковый протокол
+> - ESP32-S3 multisensor over BLE: **framed binary packet v1**
+>
+> Для актуального BLE-потока ориентируйтесь на [ARCHITECTURE.md](ARCHITECTURE.md), [firmware/proto/sensor_data.proto](firmware/proto/sensor_data.proto) и runtime-код в [lib/data/hal/ble_hal.dart](lib/data/hal/ble_hal.dart).
+
 ## 📋 Общие принципы
 
 ### Транспорт

@@ -1,7 +1,11 @@
 syntax = "proto3";
 
-// Пакет данных от датчика
-// Компилируется через nanopb для ESP32
+// Логическая схема данных датчика.
+//
+// Важно: текущий production runtime по BLE использует framed binary packet v1
+// с тем же смыслом полей, а не protobuf-сериализацию на каждом notify.
+// Этот .proto остаётся источником истины для логической модели и будущих
+// расширений/совместимости протокола.
 message SensorPacket {
   uint32 timestamp_ms = 1;
   
@@ -30,6 +34,12 @@ message SensorPacket {
   
   // Термопара
   float thermocouple_c = 15;
+
+  // Расширенные поля (совпадают с firmware/src/core/ring_buffer.h)
+  float magnetic_field_mt = 17;
+  float force_n = 18;
+  float lux_lx = 19;
+  float radiation_cpm = 20;
   
   // Битовая маска валидных полей
   uint32 valid_flags = 16;

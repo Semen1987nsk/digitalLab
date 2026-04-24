@@ -1,62 +1,105 @@
-/// Пакет данных от датчика
-class SensorPacket {
+import 'dart:math' as math;
+import 'package:equatable/equatable.dart';
+
+/// Пакет данных от мультидатчика.
+///
+/// Immutable, value-comparable через Equatable.
+/// Все поля nullable — разные конфигурации отдают разные подмножества.
+///
+/// Базовая (6 датчиков): V, A, P, T, Acc, Mag
+/// 360 (дополнительно): Distance, Force, Lux
+class SensorPacket extends Equatable {
   final int timestampMs;
-  
-  // Расстояние (мм)
-  final double? distanceMm;
-  
-  // Электричество
+
+  // ── Базовые датчики (Классика) ──────────────────────────────
+
+  /// Напряжение (В), ADS1115, диапазоны ±2/5/10/15 В
   final double? voltageV;
+
+  /// Сила тока (А), INA226, диапазон ±1 А
   final double? currentA;
-  final double? powerW;
-  
-  // Окружающая среда
-  final double? temperatureC;
+
+  /// Абсолютное давление (Па), BMP390, 0–500 кПа
   final double? pressurePa;
-  final double? humidityPct;
-  
-  // Движение (м/с²)
+
+  /// Температура воздуха (°C), NTC-термистор, -40…+165°C
+  final double? temperatureC;
+
+  /// Ускорение по осям (м/с²), LIS3DH, ±2/4/8 g
   final double? accelX;
   final double? accelY;
   final double? accelZ;
-  
-  // Гироскоп (°/с)
-  final double? gyroX;
-  final double? gyroY;
-  final double? gyroZ;
-  
-  // Термопара
-  final double? thermocoupleC;
+
+  /// Магнитное поле (мТл), MLX90393, ±500 мТл
+  final double? magneticFieldMt;
+
+  /// Влажность воздуха (%), BME280, 0–100% RH
+  final double? humidityPct;
+
+  // ── Расширенные датчики (360) ───────────────────────────────
+
+  /// Расстояние (мм), HC-SR04, 150–4000 мм
+  final double? distanceMm;
+
+  /// Сила (Н), HX711 + тензодатчик, ±50 Н
+  final double? forceN;
+
+  /// Освещённость (Лк), BH1750, 0–100 000 Лк
+  final double? luxLx;
+
+  // ── Модуль "Атом" (опция) ────────────────────────────────────
+
+  /// Радиация (имп/мин), Счётчик Гейгера СБМ-20, 0–20 000 имп/мин
+  final double? radiationCpm;
 
   const SensorPacket({
     required this.timestampMs,
-    this.distanceMm,
     this.voltageV,
     this.currentA,
-    this.powerW,
-    this.temperatureC,
     this.pressurePa,
-    this.humidityPct,
+    this.temperatureC,
     this.accelX,
     this.accelY,
     this.accelZ,
-    this.gyroX,
-    this.gyroY,
-    this.gyroZ,
-    this.thermocoupleC,
+    this.magneticFieldMt,
+    this.humidityPct,
+    this.distanceMm,
+    this.forceN,
+    this.luxLx,
+    this.radiationCpm,
   });
 
   /// Время в секундах (для графиков)
   double get timeSeconds => timestampMs / 1000.0;
 
+  /// Модуль полного ускорения (м/с²)
+  double get accelMagnitude {
+    final ax = accelX ?? 0;
+    final ay = accelY ?? 0;
+    final az = accelZ ?? 0;
+    return math.sqrt(ax * ax + ay * ay + az * az);
+  }
+
+  @override
+  List<Object?> get props => [
+        timestampMs, voltageV, currentA, pressurePa, temperatureC,
+        accelX, accelY, accelZ, magneticFieldMt, humidityPct,
+        distanceMm, forceN, luxLx, radiationCpm,
+      ];
+
   @override
   String toString() {
-    final parts = <String>[];
-    parts.add('t=${timestampMs}ms');
-    if (distanceMm != null) parts.add('d=${distanceMm!.toStringAsFixed(1)}mm');
-    if (voltageV != null) parts.add('V=${voltageV!.toStringAsFixed(3)}V');
-    if (currentA != null) parts.add('I=${currentA!.toStringAsFixed(4)}A');
+    final parts = <String>['t=${timestampMs}ms'];
+    if (voltageV != null) parts.add('V=${voltageV!.toStringAsFixed(3)}');
+    if (currentA != null) parts.add('I=${currentA!.toStringAsFixed(4)}');
     if (temperatureC != null) parts.add('T=${temperatureC!.toStringAsFixed(1)}°C');
+    if (pressurePa != null) parts.add('P=${(pressurePa! / 1000).toStringAsFixed(1)}кПа');
+    if (magneticFieldMt != null) parts.add('B=${magneticFieldMt!.toStringAsFixed(1)}мТл');
+    if (humidityPct != null) parts.add('H=${humidityPct!.toStringAsFixed(1)}%');
+    if (distanceMm != null) parts.add('d=${distanceMm!.toStringAsFixed(1)}мм');
+    if (forceN != null) parts.add('F=${forceN!.toStringAsFixed(2)}Н');
+    if (luxLx != null) parts.add('E=${luxLx!.toStringAsFixed(0)}лк');
+    if (radiationCpm != null) parts.add('R=${radiationCpm!.toStringAsFixed(0)}имп/мин');
     return 'SensorPacket(${parts.join(', ')})';
   }
 }
@@ -76,25 +119,8 @@ class DeviceInfo {
     required this.enabledSensors,
     required this.connectionType,
   });
-
-  factory DeviceInfo.mock() => const DeviceInfo(
-    name: 'PhysicsLab Mock',
-    firmwareVersion: '1.0.0-mock',
-    batteryPercent: 100,
-    enabledSensors: ['distance', 'temperature', 'acceleration'],
-    connectionType: ConnectionType.mock,
-  );
 }
 
-enum ConnectionType {
-  ble,
-  usb,
-  mock,
-}
+enum ConnectionType { ble, usb, mock }
 
-enum ConnectionStatus {
-  disconnected,
-  connecting,
-  connected,
-  error,
-}
+enum ConnectionStatus { disconnected, connecting, connected, error }
