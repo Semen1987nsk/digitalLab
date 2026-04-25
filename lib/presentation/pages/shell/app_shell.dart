@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/datasources/local/experiment_autosave_service.dart';
 import '../../../domain/entities/sensor_data.dart';
@@ -80,17 +81,70 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
+/// Интент переключения вкладки сайдбара по Ctrl+1..5.
+class _NavigateTabIntent extends Intent {
+  const _NavigateTabIntent(this.index);
+  final int index;
+}
+
 class _AppShellState extends ConsumerState<AppShell> {
   int _selectedIndex = 0;
+  final FocusNode _shellFocusNode = FocusNode(
+    debugLabel: 'AppShell',
+    skipTraversal: true,
+  );
+
+  @override
+  void dispose() {
+    _shellFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _selectTab(int i) {
+    if (i < 0 || i >= _kNavItems.length) return;
+    setState(() => _selectedIndex = i);
+  }
 
   @override
   Widget build(BuildContext context) {
     final connectionStatus = ref.watch(
       sensorConnectionProvider.select((s) => s.status),
     );
+
+    // ── Клавиатурные шорткаты уровня shell ──────────────────────
+    // Ctrl+1..5 — мгновенное переключение между пятью разделами.
+    // Работает в любом месте приложения, где виден shell (кроме
+    // открытых модальных страниц — они перехватывают focus).
+    final shortcuts = <LogicalKeySet, Intent>{
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit1):
+          const _NavigateTabIntent(0),
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit2):
+          const _NavigateTabIntent(1),
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit3):
+          const _NavigateTabIntent(2),
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit4):
+          const _NavigateTabIntent(3),
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit5):
+          const _NavigateTabIntent(4),
+    };
+
     return Stack(
       children: [
-        Scaffold(
+        Shortcuts(
+          shortcuts: shortcuts,
+          child: Actions(
+            actions: <Type, Action<Intent>>{
+              _NavigateTabIntent: CallbackAction<_NavigateTabIntent>(
+                onInvoke: (intent) {
+                  _selectTab(intent.index);
+                  return null;
+                },
+              ),
+            },
+            child: Focus(
+              focusNode: _shellFocusNode,
+              autofocus: true,
+              child: Scaffold(
           body: Row(
             children: [
               _PremiumSidebar(
@@ -113,6 +167,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ),
               ),
             ],
+          ),
+        ),
+            ),
           ),
         ),
         RecoveryPromptPresenter(

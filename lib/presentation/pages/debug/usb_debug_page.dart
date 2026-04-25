@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
+import '../../widgets/labosfera_app_bar.dart';
 
 // ═══════════════════════════════════════════════════════════════════════
 //  USB Debug Page v2.0 — Senior-level rewrite
@@ -497,8 +498,9 @@ class _UsbDebugPageState extends State<UsbDebugPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('USB Отладка'),
+      appBar: LabosferaAppBar(
+        title: 'USB Отладка',
+        subtitle: 'Низкоуровневая диагностика портов',
         actions: [
           if (_isScanning)
             const Padding(

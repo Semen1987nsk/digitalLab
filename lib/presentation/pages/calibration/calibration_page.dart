@@ -7,6 +7,7 @@ import '../../../domain/entities/sensor_data.dart';
 import '../../blocs/calibration/voltage_calibration_provider.dart';
 import '../../blocs/experiment/experiment_provider.dart';
 import '../../themes/app_theme.dart';
+import '../../widgets/labosfera_app_bar.dart';
 
 // ═══════════════════════════════════════════════════════════════
 //  КАЛИБРОВКА НАПРЯЖЕНИЯ — Premium Calibration Page
@@ -64,14 +65,14 @@ class _CalibrationPageState extends ConsumerState<CalibrationPage> {
         rawVoltage != null ? calState.calibration.apply(rawVoltage!) : null;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Калибровка напряжения'),
+      backgroundColor: context.palette.background,
+      appBar: LabosferaAppBar(
+        title: 'Калибровка напряжения',
+        subtitle: 'Точность измерений — основа честного эксперимента',
         automaticallyImplyLeading: false,
         actions: [
-          // Бейдж уровня калибровки
           _CalibrationLevelBadge(level: calState.calibration.level),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
         ],
       ),
       body: ListView(

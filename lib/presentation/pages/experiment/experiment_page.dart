@@ -29,6 +29,29 @@ import '../../themes/app_theme.dart';
 
 enum ViewMode { display, chart, table }
 
+// ═══════════════════════════════════════════════════════════════
+//  KEYBOARD INTENTS — объявлены один раз на файл, чтобы
+//  использовать в Shortcuts/Actions карте.
+// ═══════════════════════════════════════════════════════════════
+
+class _ToggleRecordingIntent extends Intent {
+  const _ToggleRecordingIntent();
+}
+
+class _CloseIntent extends Intent {
+  const _CloseIntent();
+}
+
+class _ExportIntent extends Intent {
+  const _ExportIntent();
+}
+
+class _SetViewModeIntent extends Intent {
+  // ignore: prefer_const_constructors_in_immutables
+  _SetViewModeIntent(this.mode);
+  final ViewMode mode;
+}
+
 class ExperimentPage extends ConsumerStatefulWidget {
   final SensorType sensorType;
 
@@ -194,6 +217,59 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
         : rawCurrentValue;
     final visibleValue = currentValue;
 
+    // ── Клавиатурные шорткаты ─────────────────────────────────
+    // Space       — старт/стоп записи (но только когда можно)
+    // Escape      — выход (с подтверждением, если идёт запись)
+    // Ctrl+S      — экспорт CSV
+    // 1/2/3       — переключение режимов табло/график/таблица
+    final shortcuts = <ShortcutActivator, Intent>{
+      const SingleActivator(LogicalKeyboardKey.space):
+          const _ToggleRecordingIntent(),
+      const SingleActivator(LogicalKeyboardKey.escape):
+          const _CloseIntent(),
+      const SingleActivator(LogicalKeyboardKey.keyS, control: true):
+          const _ExportIntent(),
+      const SingleActivator(LogicalKeyboardKey.digit1):
+          _SetViewModeIntent(ViewMode.display),
+      const SingleActivator(LogicalKeyboardKey.digit2):
+          _SetViewModeIntent(ViewMode.chart),
+      const SingleActivator(LogicalKeyboardKey.digit3):
+          _SetViewModeIntent(ViewMode.table),
+    };
+    final actions = <Type, Action<Intent>>{
+      _ToggleRecordingIntent: CallbackAction<_ToggleRecordingIntent>(
+        onInvoke: (_) {
+          _handlePrimaryAction(controller, experiment, isConnected);
+          return null;
+        },
+      ),
+      _CloseIntent: CallbackAction<_CloseIntent>(
+        onInvoke: (_) async {
+          if (experiment.isRunning) {
+            final ok = await _confirmStopOnBack();
+            if (ok && context.mounted) Navigator.of(context).pop();
+          } else if (context.mounted) {
+            Navigator.of(context).pop();
+          }
+          return null;
+        },
+      ),
+      _ExportIntent: CallbackAction<_ExportIntent>(
+        onInvoke: (_) {
+          if (experiment.data.isNotEmpty) {
+            _runExportFromShortcut(ref, experiment, sensor, voltageCalibration);
+          }
+          return null;
+        },
+      ),
+      _SetViewModeIntent: CallbackAction<_SetViewModeIntent>(
+        onInvoke: (intent) {
+          setState(() => _viewMode = intent.mode);
+          return null;
+        },
+      ),
+    };
+
     return PopScope(
       canPop: !experiment.isRunning,
       onPopInvokedWithResult: (didPop, _) async {
@@ -203,7 +279,13 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
           Navigator.of(context).pop();
         }
       },
-      child: Scaffold(
+      child: Shortcuts(
+        shortcuts: shortcuts,
+        child: Actions(
+          actions: actions,
+          child: Focus(
+            autofocus: true,
+            child: Scaffold(
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -409,8 +491,54 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
           ),
         ],
       ),
-      ), // child: Scaffold
+            ), // child: Scaffold
+          ), // Focus
+        ), // Actions
+      ), // Shortcuts
     ); // PopScope
+  }
+
+  Future<void> _runExportFromShortcut(
+    WidgetRef ref,
+    ExperimentState experiment,
+    SensorType sensor,
+    VoltageCalibration? voltageCalibration,
+  ) async {
+    try {
+      String path;
+      final dbExpId = experiment.dbExperimentId;
+      if (dbExpId != null &&
+          experiment.totalMeasurements > experiment.data.length) {
+        final db = ref.read(appDatabaseProvider);
+        path = await ExportUtils.exportFullExperimentFromDb(
+          db,
+          dbExpId,
+          sensor,
+          voltageCalibration: voltageCalibration,
+        );
+      } else {
+        path = await ExportUtils.exportToCsv(
+          experiment.data,
+          sensor,
+          voltageCalibration: voltageCalibration,
+        );
+      }
+      if (path.isEmpty || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Данные сохранены: $path'),
+          backgroundColor: AppColors.accent,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка экспорта: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   Widget _buildContent(ExperimentState state, double? currentValue, VoltageCalibration? voltageCalibration) {
@@ -1582,17 +1710,58 @@ class _ChartViewState extends State<_ChartView> {
   @override
   Widget build(BuildContext context) {
     if (widget.data.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.show_chart, size: 56, color: AppColors.textHint),
-            SizedBox(height: 12),
-            Text(
-              'Нажмите «Старт» для начала измерений',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ],
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      widget.sensor.color.withValues(alpha: 0.18),
+                      widget.sensor.color.withValues(alpha: 0.06),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: widget.sensor.color.withValues(alpha: 0.35),
+                    width: 1.5,
+                  ),
+                ),
+                child: Icon(
+                  Icons.show_chart_rounded,
+                  size: 40,
+                  color: widget.sensor.color,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'График появится после старта',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Нажмите «Старт» внизу, чтобы начать запись. Вы сможете остановить в любой момент и затем масштабировать график колёсиком мыши или жестами.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  height: 1.45,
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -2272,8 +2441,49 @@ class _DataTableView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (data.isEmpty) {
-      return const Center(
-        child: Text('Нет данных', style: TextStyle(color: AppColors.textSecondary)),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: sensor.color.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: sensor.color.withValues(alpha: 0.30),
+                  ),
+                ),
+                child: Icon(
+                  Icons.table_rows_outlined,
+                  size: 32,
+                  color: sensor.color.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Таблица пуста',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Нажмите «Старт», чтобы начать запись. Значения появятся здесь по мере поступления данных.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 

@@ -10,6 +10,7 @@ import 'presentation/pages/platform/subject_selection_page.dart';
 import 'presentation/pages/shell/app_shell.dart';
 import 'presentation/pages/splash/splash_screen.dart';
 import 'presentation/themes/app_theme.dart';
+import 'presentation/themes/theme_mode_provider.dart';
 
 // ═══════════════════════════════════════════════════════════════
 //  ЦИФРОВАЯ ЛАБОРАТОРИЯ ПО ФИЗИКЕ — «Лабосфера»
@@ -131,10 +132,13 @@ class _DigitalLabAppState extends ConsumerState<DigitalLabApp> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
     return MaterialApp(
       title: 'ЛАБОСФЕРА — Цифровые лаборатории',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       home: _showSplash
           ? SplashScreen(
               onComplete: () {

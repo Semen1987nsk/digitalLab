@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/hal/port_scanner.dart';
 import '../../../data/hal/port_connection_manager.dart';
 import '../../themes/app_theme.dart';
+import '../../widgets/labosfera_app_bar.dart';
 
 /// Страница выбора COM-порта с диагностикой
 class PortSelectionPage extends StatefulWidget {
@@ -139,9 +140,12 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
     final selectedPortInfo = _ports.where((p) => p.name == _selectedPort).firstOrNull;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Выбор COM-порта'),
+      backgroundColor: context.palette.background,
+      appBar: LabosferaAppBar(
+        title: 'Выбор COM-порта',
+        subtitle: _hasSensorPort
+            ? 'Датчик найден — выберите порт для подключения'
+            : 'Подключите USB-датчик и обновите список',
         actions: [
           IconButton(
             icon: _isScanning
@@ -332,23 +336,10 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
   Widget _buildPortCard(PortInfo port) {
     final isSelected = port.name == _selectedPort;
     final isOurSensor = port.isLikelyOurSensor;
-    
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.45)
-              : isOurSensor
-                  ? AppColors.success.withValues(alpha: 0.35)
-                  : AppColors.cardBorder,
-          width: isSelected || isOurSensor ? 1.5 : 1,
-        ),
-      ),
-      color: isSelected
-          ? AppColors.primary.withValues(alpha: 0.08)
-          : AppColors.surface,
+
+    return _HoverablePortCard(
+      isSelected: isSelected,
+      isOurSensor: isOurSensor,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => setState(() => _selectedPort = port.name),
@@ -750,6 +741,69 @@ class _ChecklistRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Port card с hover-эффектом и поднятием при наведении мыши.
+/// Стилизация берётся из родительского _buildPortCard через props,
+/// но hover-logic и AnimatedContainer изолированы здесь.
+class _HoverablePortCard extends StatefulWidget {
+  const _HoverablePortCard({
+    required this.isSelected,
+    required this.isOurSensor,
+    required this.child,
+  });
+
+  final bool isSelected;
+  final bool isOurSensor;
+  final Widget child;
+
+  @override
+  State<_HoverablePortCard> createState() => _HoverablePortCardState();
+}
+
+class _HoverablePortCardState extends State<_HoverablePortCard> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseBorder = widget.isSelected
+        ? AppColors.primary.withValues(alpha: 0.45)
+        : widget.isOurSensor
+            ? AppColors.success.withValues(alpha: 0.35)
+            : AppColors.cardBorder;
+    final hoverBorder = widget.isOurSensor
+        ? AppColors.success.withValues(alpha: 0.75)
+        : AppColors.primary.withValues(alpha: 0.55);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        transform: _hover
+            ? (Matrix4.identity()..translateByDouble(0.0, -2.0, 0.0, 1.0))
+            : Matrix4.identity(),
+        child: Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: _hover ? hoverBorder : baseBorder,
+              width: (widget.isSelected || widget.isOurSensor || _hover)
+                  ? 1.5
+                  : 1,
+            ),
+          ),
+          color: widget.isSelected
+              ? AppColors.primary.withValues(alpha: 0.08)
+              : AppColors.surface,
+          child: widget.child,
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../themes/app_theme.dart';
+import 'labosfera_app_bar.dart';
 
 class PagePreviewSection {
   final String title;
@@ -36,8 +37,8 @@ class PagePreviewScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
+      appBar: LabosferaAppBar(
+        title: title,
         automaticallyImplyLeading: false,
       ),
       body: ListView(

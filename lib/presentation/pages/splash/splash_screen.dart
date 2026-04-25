@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../themes/app_theme.dart';
+import '../../themes/design_tokens.dart';
 
 class SplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
@@ -12,6 +13,18 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
+  // ── Тайминги (вынесены в токены) ──────────────────────────────
+  static const _contentDuration = DS.animSplash; // 900ms
+  static const _progressDuration = DS.animSplashProgress; // 1600ms
+
+  // Прогресс-бар стартует с небольшим опережением, когда hero-контент
+  // ещё въезжает — так вся анимация сливается в один кадр намерения.
+  static const _progressStartOffset = Duration(milliseconds: 120);
+
+  // Пауза после завершения прогресса, прежде чем уступить место главному
+  // экрану — даёт глазу «поймать» 100% прогресса.
+  static const _completionHold = Duration(milliseconds: 180);
+
   late AnimationController _contentController;
   late AnimationController _progressController;
 
@@ -24,7 +37,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
 
     _contentController = AnimationController(
-      duration: const Duration(milliseconds: 900),
+      duration: _contentDuration,
       vsync: this,
     );
 
@@ -51,21 +64,44 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _progressController = AnimationController(
-      duration: const Duration(milliseconds: 1600),
+      duration: _progressDuration,
       vsync: this,
     );
 
     _startAnimations();
   }
 
+  /// Запускаем hero и прогресс-бар параллельно через Future.wait:
+  /// — hero стартует сразу
+  /// — прогресс — через _progressStartOffset, чтобы не конкурировал с
+  ///   первыми миллисекундами логотипа
+  /// — завершение — строго после обеих анимаций + короткая пауза для
+  ///   восприятия 100%-отметки
+  /// При unmount все awaits прерываются проверкой mounted — без падений.
   Future<void> _startAnimations() async {
-    _contentController.forward();
-    await Future.delayed(const Duration(milliseconds: 120));
+    final heroFuture = _runController(_contentController);
+    final progressFuture = () async {
+      await Future<void>.delayed(_progressStartOffset);
+      if (!mounted) return;
+      await _runController(_progressController);
+    }();
+
+    await Future.wait<void>([heroFuture, progressFuture]);
     if (!mounted) return;
-    await _progressController.forward();
-    await Future.delayed(const Duration(milliseconds: 180));
+
+    await Future<void>.delayed(_completionHold);
     if (!mounted) return;
     widget.onComplete();
+  }
+
+  /// Обёртка над AnimationController.forward() — подавляет ошибку
+  /// TickerCanceled, которая прилетает при dispose во время анимации.
+  Future<void> _runController(AnimationController c) async {
+    try {
+      await c.forward();
+    } on TickerCanceled {
+      // ignore — виджет был disposed
+    }
   }
 
   @override

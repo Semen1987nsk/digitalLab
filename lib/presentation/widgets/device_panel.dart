@@ -553,32 +553,51 @@ class _PulseDotState extends State<_PulseDot>
 
   @override
   Widget build(BuildContext context) {
+    // Semantics гарантирует, что screen reader объявит состояние
+    // в дополнение к цветовому маркеру — важно для доступности.
+    final semanticLabel =
+        widget.isActive ? 'Устройство активно' : 'Устройство неактивно';
+
     if (!widget.isActive) {
-      return Container(
-        width: widget.size,
-        height: widget.size,
-        decoration: BoxDecoration(
-          color: widget.color,
-          shape: BoxShape.circle,
+      // Неактивное состояние — сплошной кружок с контрастной обводкой,
+      // чтобы отличалось от активного не только цветом.
+      return Semantics(
+        label: semanticLabel,
+        child: Container(
+          width: widget.size,
+          height: widget.size,
+          decoration: BoxDecoration(
+            color: widget.color.withValues(alpha: 0.4),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: widget.color.withValues(alpha: 0.8),
+              width: 1.2,
+            ),
+          ),
         ),
       );
     }
 
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (_, __) => Container(
-        width: widget.size,
-        height: widget.size,
-        decoration: BoxDecoration(
-          color: widget.color,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: widget.color.withValues(alpha: _animation.value * 0.5),
-              blurRadius: widget.size * _animation.value,
-              spreadRadius: widget.size * 0.2 * _animation.value,
-            ),
-          ],
+    return Semantics(
+      label: semanticLabel,
+      liveRegion: true,
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (_, __) => Container(
+          width: widget.size,
+          height: widget.size,
+          decoration: BoxDecoration(
+            color: widget.color,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color:
+                    widget.color.withValues(alpha: _animation.value * 0.5),
+                blurRadius: widget.size * _animation.value,
+                spreadRadius: widget.size * 0.2 * _animation.value,
+              ),
+            ],
+          ),
         ),
       ),
     );

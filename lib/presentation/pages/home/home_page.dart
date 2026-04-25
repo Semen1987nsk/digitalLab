@@ -8,6 +8,7 @@ import '../../blocs/calibration/voltage_calibration_provider.dart';
 import '../../blocs/experiment/experiment_provider.dart';
 import '../../themes/app_theme.dart';
 import '../../widgets/device_panel.dart';
+import '../../widgets/labosfera_app_bar.dart';
 import '../experiment/experiment_page.dart';
 import '../oscilloscope/oscilloscope_page.dart';
 import '../ble/ble_device_page.dart';
@@ -91,60 +92,14 @@ class HomePage extends ConsumerWidget {
     );
   }
 
-  SliverAppBar _buildAppBar(
+  Widget _buildAppBar(
     BuildContext context,
     WidgetRef ref,
     SensorConnectionState connectionState,
     HalMode halMode,
     ProductVersion version,
   ) {
-    return SliverAppBar(
-      floating: true,
-      snap: true,
-      title: Row(
-        children: [
-          // Логотип — градиент как на сайте labosfera.ru
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [AppColors.primary, AppColors.accent],
-              ),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: const Icon(Icons.science, size: 20, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'ЛАБОСФЕРА',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                  height: 1.1,
-                ),
-              ),
-              Text(
-                'Цифровые лаборатории',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.textSecondary,
-                  letterSpacing: 0.3,
-                  height: 1.3,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return LabosferaSliverAppBar(
       actions: [
         // Порт
         IconButton(
@@ -670,7 +625,7 @@ class _SensorGrid extends ConsumerWidget {
 //  • Бейдж «360» для недоступных в базовой версии
 // ═══════════════════════════════════════════════════════════════
 
-class _SensorCard extends StatelessWidget {
+class _SensorCard extends StatefulWidget {
   final SensorType sensor;
   final bool isAvailable;
   final bool isDeviceConnected;
@@ -688,26 +643,55 @@ class _SensorCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final color = isAvailable ? sensor.color : AppColors.textHint;
-    final hasLiveData = liveValue != null;
+  State<_SensorCard> createState() => _SensorCardState();
+}
 
-    return Card(
+class _SensorCardState extends State<_SensorCard> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final sensor = widget.sensor;
+    final isAvailable = widget.isAvailable;
+    final isDeviceConnected = widget.isDeviceConnected;
+    final isHardwareConnected = widget.isHardwareConnected;
+    final liveValue = widget.liveValue;
+    final color = isAvailable ? sensor.color : AppColors.textHint;
+
+    final border = isHardwareConnected
+        ? sensor.color.withValues(alpha: 0.45)
+        : isAvailable
+            ? sensor.color.withValues(alpha: 0.15)
+            : AppColors.cardBorder;
+    final hoverBorder = isAvailable
+        ? sensor.color.withValues(alpha: 0.75)
+        : AppColors.cardBorder;
+
+    return MouseRegion(
+      cursor: isAvailable
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+        transform: _hover
+            ? (Matrix4.identity()..translateByDouble(0.0, -2.0, 0.0, 1.0))
+            : Matrix4.identity(),
+        child: Card(
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: isHardwareConnected
-              ? sensor.color.withValues(alpha: 0.45)
-              : isAvailable
-                  ? sensor.color.withValues(alpha: 0.15)
-                  : AppColors.cardBorder,
-          width: isHardwareConnected ? 1.5 : 1,
+          color: _hover ? hoverBorder : border,
+          width: (isHardwareConnected || _hover) ? 1.5 : 1,
         ),
       ),
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
         splashColor: color.withValues(alpha: 0.1),
+        hoverColor: Colors.transparent,
         child: Stack(
           children: [
             // ── Градиент фона ──
@@ -784,9 +768,9 @@ class _SensorCard extends StatelessWidget {
                   const Spacer(),
 
                   // Живое значение (когда подключён и данные идут)
-                  if (hasLiveData) ...[
+                  if (liveValue != null) ...[
                     _LiveValueChip(
-                      value: liveValue!,
+                      value: liveValue,
                       sensor: sensor,
                     ),
                     const SizedBox(height: 6),
@@ -821,6 +805,8 @@ class _SensorCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
         ),
       ),
     );

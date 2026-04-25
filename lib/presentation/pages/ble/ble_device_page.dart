@@ -4,6 +4,7 @@ import '../../../data/hal/ble_hal.dart';
 import '../../blocs/ble/ble_scan_provider.dart';
 import '../../blocs/experiment/experiment_provider.dart';
 import '../../themes/app_theme.dart';
+import '../../widgets/labosfera_app_bar.dart';
 
 // ═══════════════════════════════════════════════════════════════
 //  BLE Device Selection Page
@@ -36,10 +37,12 @@ class _BleDevicePageState extends ConsumerState<BleDevicePage> {
     final scanState = ref.watch(bleScanProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bluetooth устройства'),
+      appBar: LabosferaAppBar(
+        title: 'Bluetooth устройства',
+        subtitle: scanState.isScanning
+            ? 'Идёт поиск поблизости...'
+            : 'Беспроводное подключение мультидатчика',
         actions: [
-          // Кнопка сканирования
           if (scanState.isScanning)
             const Padding(
               padding: EdgeInsets.all(16),
