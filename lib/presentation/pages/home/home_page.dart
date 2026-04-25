@@ -42,12 +42,11 @@ class HomePage extends ConsumerWidget {
     // select() — слушаем только изменение статуса, а не каждое обновление
     // state object. Уменьшает количество rebuild на слабых ПК.
     final connectionState = ref.watch(sensorConnectionProvider);
-    final version = ref.watch(productVersionProvider);
     final halMode = ref.watch(halModeProvider);
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(context, ref, connectionState, halMode, version),
+          _buildAppBar(context, ref, connectionState, halMode),
           const SliverToBoxAdapter(
             child: DevicePanel(),
           ),
@@ -55,15 +54,21 @@ class HomePage extends ConsumerWidget {
             child: _HomeOverviewCard(
               connectionState: connectionState,
               halMode: halMode,
-              version: version,
             ),
           ),
-          SliverToBoxAdapter(
-            child: _VersionHeader(version: version),
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: _SectionHeader(
+                title: 'Датчики',
+                subtitle: 'Каждый датчик откликается на физическое воздействие — нажмите, чтобы начать эксперимент.',
+                accentColor: AppColors.primary,
+              ),
+            ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            sliver: _SensorGrid(version: version),
+          const SliverPadding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
+            sliver: _SensorGrid(),
           ),
           const SliverToBoxAdapter(
             child: Padding(
@@ -97,7 +102,6 @@ class HomePage extends ConsumerWidget {
     WidgetRef ref,
     SensorConnectionState connectionState,
     HalMode halMode,
-    ProductVersion version,
   ) {
     return LabosferaSliverAppBar(
       actions: [
@@ -215,66 +219,13 @@ class HomePage extends ConsumerWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  ЗАГОЛОВОК ВЕРСИИ
-// ═══════════════════════════════════════════════════════════════
-
-class _VersionHeader extends ConsumerWidget {
-  final ProductVersion version;
-  const _VersionHeader({required this.version});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionHeader(
-            title: 'Датчики',
-            subtitle: 'Выберите нужный датчик для запуска эксперимента или просмотра текущих значений.',
-            accentColor: AppColors.primary,
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: SegmentedButton<ProductVersion>(
-              segments: const [
-                ButtonSegment(
-                  value: ProductVersion.base,
-                  label: Text('Базовая', style: TextStyle(fontSize: 13)),
-                  icon: Icon(Icons.science_outlined, size: 18),
-                ),
-                ButtonSegment(
-                  value: ProductVersion.pro360,
-                  label: Text('360', style: TextStyle(fontSize: 13)),
-                  icon: Icon(Icons.rocket_launch_outlined, size: 18),
-                ),
-              ],
-              selected: {version},
-              onSelectionChanged: (v) =>
-                  ref.read(productVersionProvider.notifier).state = v.first,
-              style: const ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _HomeOverviewCard extends StatelessWidget {
   final SensorConnectionState connectionState;
   final HalMode halMode;
-  final ProductVersion version;
 
   const _HomeOverviewCard({
     required this.connectionState,
     required this.halMode,
-    required this.version,
   });
 
   @override
@@ -306,11 +257,6 @@ class _HomeOverviewCard extends StatelessWidget {
       HalMode.usb => 'USB (COM)',
       HalMode.ble => 'Bluetooth',
       HalMode.mock => 'Симуляция',
-    };
-
-    final versionLabel = switch (version) {
-      ProductVersion.base => 'Базовая версия',
-      ProductVersion.pro360 => 'Версия 360',
     };
 
     return Padding(
@@ -369,15 +315,6 @@ class _HomeOverviewCard extends StatelessWidget {
                     icon: Icons.settings_input_component_outlined,
                     label: modeLabel,
                     color: AppColors.primary,
-                  ),
-                  _InfoPill(
-                    icon: version == ProductVersion.base
-                        ? Icons.science_outlined
-                        : Icons.rocket_launch_outlined,
-                    label: versionLabel,
-                    color: version == ProductVersion.base
-                        ? AppColors.primary
-                        : AppColors.version360,
                   ),
                 ],
               ),
@@ -484,8 +421,7 @@ class _InfoPill extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════
 
 class _SensorGrid extends ConsumerWidget {
-  final ProductVersion version;
-  const _SensorGrid({required this.version});
+  const _SensorGrid();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -518,7 +454,6 @@ class _SensorGrid extends ConsumerWidget {
           const allSensors = SensorType.values;
           if (index >= allSensors.length) return null;
           final sensor = allSensors[index];
-          final isAvailable = sensor.isAvailableIn(version);
 
           // Hardware presence: sensor.id must be in enabledSensors list
           final isHardwareConnected =
@@ -537,80 +472,19 @@ class _SensorGrid extends ConsumerWidget {
           return RepaintBoundary(
             child: _SensorCard(
               sensor: sensor,
-              isAvailable: isAvailable,
               isDeviceConnected: isDeviceConnected,
               isHardwareConnected: isHardwareConnected,
               liveValue: liveValue,
-              onTap: isAvailable
-                  ? () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ExperimentPage(sensorType: sensor),
-                        ),
-                      )
-                  : () => _showUpgradeDialog(context, sensor),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ExperimentPage(sensorType: sensor),
+                ),
+              ),
             ),
           );
         },
         childCount: SensorType.values.length,
-      ),
-    );
-  }
-
-  void _showUpgradeDialog(BuildContext context, SensorType sensor) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(sensor.icon, color: sensor.color),
-            const SizedBox(width: 12),
-            Text(sensor.title),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Датчик «${sensor.title}» доступен в версии 360.',
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.version360Badge.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                    color: AppColors.version360Badge.withValues(alpha: 0.3)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.rocket_launch,
-                      color: AppColors.version360, size: 20),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Версия 360 включает датчик силы, расстояния и люксметр',
-                      style: TextStyle(
-                          fontSize: 13, color: AppColors.textSecondary),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Понятно'),
-          ),
-        ],
       ),
     );
   }
@@ -622,12 +496,10 @@ class _SensorGrid extends ConsumerWidget {
 //  • Градиентный фон + glow-border когда датчик подключён
 //  • Анимированный бейдж «Подключён» / «Не подключён»
 //  • Живое значение прямо на карточке (как в SPARKvue)
-//  • Бейдж «360» для недоступных в базовой версии
 // ═══════════════════════════════════════════════════════════════
 
 class _SensorCard extends StatefulWidget {
   final SensorType sensor;
-  final bool isAvailable;
   final bool isDeviceConnected;
   final bool isHardwareConnected;
   final double? liveValue;
@@ -635,7 +507,6 @@ class _SensorCard extends StatefulWidget {
 
   const _SensorCard({
     required this.sensor,
-    required this.isAvailable,
     required this.isDeviceConnected,
     required this.isHardwareConnected,
     required this.liveValue,
@@ -652,25 +523,18 @@ class _SensorCardState extends State<_SensorCard> {
   @override
   Widget build(BuildContext context) {
     final sensor = widget.sensor;
-    final isAvailable = widget.isAvailable;
     final isDeviceConnected = widget.isDeviceConnected;
     final isHardwareConnected = widget.isHardwareConnected;
     final liveValue = widget.liveValue;
-    final color = isAvailable ? sensor.color : AppColors.textHint;
+    final color = sensor.color;
 
     final border = isHardwareConnected
         ? sensor.color.withValues(alpha: 0.45)
-        : isAvailable
-            ? sensor.color.withValues(alpha: 0.15)
-            : AppColors.cardBorder;
-    final hoverBorder = isAvailable
-        ? sensor.color.withValues(alpha: 0.75)
-        : AppColors.cardBorder;
+        : sensor.color.withValues(alpha: 0.15);
+    final hoverBorder = sensor.color.withValues(alpha: 0.75);
 
     return MouseRegion(
-      cursor: isAvailable
-          ? SystemMouseCursors.click
-          : SystemMouseCursors.basic,
+      cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: AnimatedContainer(
@@ -703,11 +567,7 @@ class _SensorCardState extends State<_SensorCard> {
                     end: Alignment.bottomRight,
                     colors: [
                       color.withValues(
-                          alpha: isHardwareConnected
-                              ? 0.12
-                              : isAvailable
-                                  ? 0.06
-                                  : 0.02),
+                          alpha: isHardwareConnected ? 0.12 : 0.06),
                       Colors.transparent,
                     ],
                   ),
@@ -757,10 +617,7 @@ class _SensorCardState extends State<_SensorCard> {
                         child: Icon(sensor.icon, color: color, size: 20),
                       ),
                       const Spacer(),
-                      // Бейдж 360 или бейдж подключения
-                      if (!isAvailable)
-                        _pro360Badge()
-                      else if (isDeviceConnected)
+                      if (isDeviceConnected)
                         _ConnectionBadge(isConnected: isHardwareConnected),
                     ],
                   ),
@@ -779,12 +636,10 @@ class _SensorCardState extends State<_SensorCard> {
                   // Название датчика
                   Text(
                     sensor.title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: isAvailable
-                          ? AppColors.textPrimary
-                          : AppColors.textHint,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 1),
@@ -792,11 +647,9 @@ class _SensorCardState extends State<_SensorCard> {
                   // Подзаголовок
                   Text(
                     sensor.subtitle,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 11,
-                      color: isAvailable
-                          ? AppColors.textSecondary
-                          : AppColors.textHint,
+                      color: AppColors.textSecondary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -812,26 +665,6 @@ class _SensorCardState extends State<_SensorCard> {
     );
   }
 
-  Widget _pro360Badge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.version360Badge.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-            color: AppColors.version360Badge.withValues(alpha: 0.3)),
-      ),
-      child: const Text(
-        '360',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: AppColors.version360,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════

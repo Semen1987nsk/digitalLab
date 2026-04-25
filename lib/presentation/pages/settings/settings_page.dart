@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../domain/entities/sensor_type.dart';
 import '../../blocs/experiment/experiment_provider.dart';
 import '../../themes/app_theme.dart';
 import '../../themes/design_tokens.dart';
@@ -16,7 +15,6 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final halMode = ref.watch(halModeProvider);
-    final version = ref.watch(productVersionProvider);
     final palette = context.palette;
 
     return Scaffold(
@@ -48,17 +46,6 @@ class SettingsPage extends ConsumerWidget {
               current: halMode,
               onChanged: (mode) =>
                   ref.read(halModeProvider.notifier).state = mode,
-            ),
-          ),
-          DSGap.h4,
-          _SectionCard(
-            icon: Icons.workspaces_outline,
-            title: 'Версия продукта',
-            subtitle: 'Базовая (6 датчиков) или 360 (полный ФГОС)',
-            child: _VersionSelector(
-              current: version,
-              onChanged: (v) =>
-                  ref.read(productVersionProvider.notifier).state = v,
             ),
           ),
           DSGap.h4,
@@ -222,41 +209,6 @@ class _HalModeSelector extends StatelessWidget {
           label: 'Симуляция',
           icon: Icons.developer_mode,
           description: 'Демонстрация без железа',
-        ),
-      ],
-      onChanged: onChanged,
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  ВЫБОР ВЕРСИИ
-// ═══════════════════════════════════════════════════════════════
-
-class _VersionSelector extends StatelessWidget {
-  const _VersionSelector({required this.current, required this.onChanged});
-
-  final ProductVersion current;
-  final ValueChanged<ProductVersion> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SegmentedOptionRow<ProductVersion>(
-      current: current,
-      options: const [
-        _Option(
-          value: ProductVersion.base,
-          label: 'Базовая',
-          icon: Icons.school_outlined,
-          description: '6 датчиков, 70% ФГОС',
-          accent: AppColors.versionBase,
-        ),
-        _Option(
-          value: ProductVersion.pro360,
-          label: '360',
-          icon: Icons.auto_awesome_outlined,
-          description: 'Полный набор датчиков, 100% ФГОС',
-          accent: AppColors.version360,
         ),
       ],
       onChanged: onChanged,

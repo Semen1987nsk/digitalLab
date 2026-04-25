@@ -19,11 +19,6 @@ import '../ble/ble_scan_provider.dart';
 //  ГЛОБАЛЬНЫЕ НАСТРОЙКИ
 // ═══════════════════════════════════════════════════════════════
 
-/// Текущая версия продукта (Базовая / 360)
-final productVersionProvider = StateProvider<ProductVersion>(
-  (ref) => ProductVersion.pro360,
-);
-
 /// Режим подключения
 enum HalMode { mock, usb, ble }
 
@@ -42,10 +37,9 @@ final halModeProvider = StateProvider<HalMode>((ref) {
 /// Выбранный COM-порт (null = автовыбор)
 final selectedPortProvider = StateProvider<String?>((ref) => null);
 
-/// Доступные датчики в текущей версии
+/// Все датчики приложения — одна унифицированная версия продукта.
 final availableSensorsProvider = Provider<List<SensorType>>((ref) {
-  final version = ref.watch(productVersionProvider);
-  return SensorType.availableIn(version);
+  return SensorType.values;
 });
 
 // ═══════════════════════════════════════════════════════════════

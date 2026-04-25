@@ -110,27 +110,18 @@ void main() {
       expect(SensorType.pressure.title, equals('Давление'));
     });
 
-    test('base sensors are available in base version', () {
-      final baseSensors = SensorType.availableIn(ProductVersion.base);
-      expect(baseSensors, contains(SensorType.voltage));
-      expect(baseSensors, contains(SensorType.current));
-      expect(baseSensors, contains(SensorType.temperature));
-      expect(baseSensors, contains(SensorType.pressure));
-      expect(baseSensors, contains(SensorType.acceleration));
-      expect(baseSensors, contains(SensorType.magneticField));
-    });
-
-    test('360 sensors are NOT available in base version', () {
-      final baseSensors = SensorType.availableIn(ProductVersion.base);
-      expect(baseSensors, isNot(contains(SensorType.distance)));
-      expect(baseSensors, isNot(contains(SensorType.force)));
-      expect(baseSensors, isNot(contains(SensorType.lux)));
-      expect(baseSensors, isNot(contains(SensorType.radiation)));
-    });
-
-    test('all sensors available in pro360', () {
-      final pro = SensorType.availableIn(ProductVersion.pro360);
-      expect(pro.length, equals(SensorType.values.length));
+    test('all sensor types are enumerated', () {
+      // Одна унифицированная версия продукта — все датчики всегда доступны.
+      expect(SensorType.values, contains(SensorType.voltage));
+      expect(SensorType.values, contains(SensorType.current));
+      expect(SensorType.values, contains(SensorType.temperature));
+      expect(SensorType.values, contains(SensorType.pressure));
+      expect(SensorType.values, contains(SensorType.acceleration));
+      expect(SensorType.values, contains(SensorType.magneticField));
+      expect(SensorType.values, contains(SensorType.distance));
+      expect(SensorType.values, contains(SensorType.force));
+      expect(SensorType.values, contains(SensorType.lux));
+      expect(SensorType.values, contains(SensorType.radiation));
     });
 
     test('minRange is positive for all types', () {

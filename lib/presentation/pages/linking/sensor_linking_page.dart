@@ -12,7 +12,7 @@ class SensorLinkingPage extends StatelessWidget {
       subtitle:
           'Этот раздел станет одним из главных преимуществ Labosfera: совместные графики, X-Y режимы и сравнение нескольких параметров в одном опыте.',
       icon: Icons.cable,
-      accentColor: AppColors.version360,
+      accentColor: AppColors.primary,
       statusLabel: 'Скоро: multi-sensor анализ',
       readinessNote:
           'Функция проектируется как отдельный сильный инструмент для лабораторных работ. Наша цель — сделать её мощной, но понятной даже для школьного сценария.',

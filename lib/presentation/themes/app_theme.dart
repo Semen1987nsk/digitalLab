@@ -21,11 +21,6 @@ class AppColors {
   static const info = Color(0xFF58A6FF);
   static const disconnected = Color(0xFF484F58);
 
-  // ── Версии продукта (brightness-neutral) ────────────────────────
-  static const versionBase = Color(0xFF58A6FF);
-  static const version360 = Color(0xFFA371F7);
-  static const version360Badge = Color(0xFF6E40C9);
-
   // ── Темная палитра (legacy доступ — используйте context.palette) ─
   static const background = Color(0xFF0D1117);
   static const surface = Color(0xFF161B22);
