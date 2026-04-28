@@ -189,9 +189,6 @@ class DataProcessingIsolate {
 
     // Инициализация процессоров для основных каналов
     if (params.enableFiltering) {
-      processors[SensorType.distance] = SignalProcessor(
-        sensorType: SensorType.distance,
-      );
       processors[SensorType.voltage] = SignalProcessor(
         sensorType: SensorType.voltage,
       );
@@ -212,17 +209,17 @@ class DataProcessingIsolate {
           try {
             if (params.deviceType == IsolateDeviceType.bleMultisensor) {
               bleBuffer.addAll(command.data);
-              
+
               // Защита от переполнения
               if (bleBuffer.length > 84 * 16) {
                 bleBuffer.clear();
                 continue;
               }
-              
+
               while (true) {
                 final packet = _tryExtractBlePacket(bleBuffer);
                 if (packet == null) break;
-                
+
                 parentPort.send(packet);
                 packetsProcessed++;
               }
@@ -249,11 +246,8 @@ class DataProcessingIsolate {
                     }
                     break;
                   case IsolateDeviceType.ftdiDistance:
-                    packet = _parseDistanceLine(
-                      line,
-                      processors[SensorType.distance],
-                      params.enableFiltering,
-                    );
+                    // Standalone V802 distance device — фильтрация без UI-маппинга.
+                    packet = _parseDistanceLine(line, null, false);
                     break;
                   case IsolateDeviceType.bleMultisensor:
                     break; // Handled above
@@ -266,7 +260,8 @@ class DataProcessingIsolate {
                   // Периодическая статистика (каждые 100 пакетов)
                   if (packetsProcessed % 100 == 0) {
                     final crcRate = packetsProcessed > 0
-                        ? (crcErrors / packetsProcessed * 100).toStringAsFixed(1)
+                        ? (crcErrors / packetsProcessed * 100)
+                            .toStringAsFixed(1)
                         : '0.0';
                     parentPort.send(
                       _IsolateLog(
@@ -280,7 +275,8 @@ class DataProcessingIsolate {
 
               // Защита от переполнения буфера
               if (stringBuffer.length > 4096) {
-                final lastNewline = stringBuffer.lastIndexOf('\n', stringBuffer.length - 512);
+                final lastNewline =
+                    stringBuffer.lastIndexOf('\n', stringBuffer.length - 512);
                 stringBuffer = lastNewline > 0
                     ? stringBuffer.substring(lastNewline + 1)
                     : stringBuffer.substring(stringBuffer.length - 512);
@@ -358,9 +354,10 @@ class DataProcessingIsolate {
               : value;
           break;
         case 'T':
-          temperature = enableFiltering && processors[SensorType.temperature] != null
-              ? processors[SensorType.temperature]!.process(value)
-              : value;
+          temperature =
+              enableFiltering && processors[SensorType.temperature] != null
+                  ? processors[SensorType.temperature]!.process(value)
+                  : value;
           break;
         case 'P':
           pressure = value;
@@ -369,9 +366,9 @@ class DataProcessingIsolate {
           humidity = value;
           break;
         case 'DIST':
-          distance = enableFiltering && processors[SensorType.distance] != null
-              ? processors[SensorType.distance]!.process(value)
-              : value;
+          // distance — нет UI-маппинга, передаём raw для возможных
+          // standalone V802-устройств.
+          distance = value;
           break;
         case 'ACC':
           acceleration = value;
@@ -595,21 +592,34 @@ class DataProcessingIsolate {
   }) {
     if (validFlags == 0) return false;
 
-    bool inRange(double v, double min, double max) => v.isFinite && v >= min && v <= max;
+    bool inRange(double v, double min, double max) =>
+        v.isFinite && v >= min && v <= max;
 
-    if ((validFlags & (1 << 0)) != 0 && !inRange(distance, 0, 100000)) return false;
-    if ((validFlags & (1 << 1)) != 0 && !inRange(voltage, -500, 500)) return false;
-    if ((validFlags & (1 << 2)) != 0 && !inRange(current, -100, 100)) return false;
-    if ((validFlags & (1 << 4)) != 0 && !inRange(temperature, -100, 300)) return false;
-    if ((validFlags & (1 << 5)) != 0 && !inRange(pressure, 1000, 500000)) return false;
-    if ((validFlags & (1 << 6)) != 0 && !inRange(humidity, 0, 100)) return false;
-    if ((validFlags & (1 << 7)) != 0 && !inRange(accelX, -500, 500)) return false;
-    if ((validFlags & (1 << 8)) != 0 && !inRange(accelY, -500, 500)) return false;
-    if ((validFlags & (1 << 9)) != 0 && !inRange(accelZ, -500, 500)) return false;
-    if ((validFlags & (1 << 14)) != 0 && !inRange(magneticField, -10000, 10000)) return false;
-    if ((validFlags & (1 << 15)) != 0 && !inRange(force, -100000, 100000)) return false;
+    if ((validFlags & (1 << 0)) != 0 && !inRange(distance, 0, 100000))
+      return false;
+    if ((validFlags & (1 << 1)) != 0 && !inRange(voltage, -500, 500))
+      return false;
+    if ((validFlags & (1 << 2)) != 0 && !inRange(current, -100, 100))
+      return false;
+    if ((validFlags & (1 << 4)) != 0 && !inRange(temperature, -100, 300))
+      return false;
+    if ((validFlags & (1 << 5)) != 0 && !inRange(pressure, 1000, 500000))
+      return false;
+    if ((validFlags & (1 << 6)) != 0 && !inRange(humidity, 0, 100))
+      return false;
+    if ((validFlags & (1 << 7)) != 0 && !inRange(accelX, -500, 500))
+      return false;
+    if ((validFlags & (1 << 8)) != 0 && !inRange(accelY, -500, 500))
+      return false;
+    if ((validFlags & (1 << 9)) != 0 && !inRange(accelZ, -500, 500))
+      return false;
+    if ((validFlags & (1 << 14)) != 0 && !inRange(magneticField, -10000, 10000))
+      return false;
+    if ((validFlags & (1 << 15)) != 0 && !inRange(force, -100000, 100000))
+      return false;
     if ((validFlags & (1 << 16)) != 0 && !inRange(lux, 0, 200000)) return false;
-    if ((validFlags & (1 << 17)) != 0 && !inRange(radiation, 0, 1000000)) return false;
+    if ((validFlags & (1 << 17)) != 0 && !inRange(radiation, 0, 1000000))
+      return false;
 
     return true;
   }

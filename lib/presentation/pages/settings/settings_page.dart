@@ -30,7 +30,8 @@ class SettingsPage extends ConsumerWidget {
           _SectionCard(
             icon: Icons.palette_outlined,
             title: 'Оформление',
-            subtitle: 'Тёмная тема по умолчанию — рекомендована СанПиН для длительных уроков',
+            subtitle:
+                'Тёмная тема по умолчанию — рекомендована СанПиН для длительных уроков',
             child: _ThemeSelector(
               current: themeMode,
               onChanged: (mode) =>
@@ -106,8 +107,7 @@ class _SectionCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(DS.rMd),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(icon,
-                      size: DS.iconMd, color: AppColors.primary),
+                  child: Icon(icon, size: DS.iconMd, color: AppColors.primary),
                 ),
                 DSGap.w3,
                 Expanded(
@@ -366,10 +366,8 @@ class _AboutCard extends StatelessWidget {
               'Цифровая лаборатория по физике для школ России. '
               'Сертифицирована для использования в ФГОС ОО. '
               'Подключается к мультидатчику Лабосферы через USB или Bluetooth.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(height: 1.5),
+              style:
+                  Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5),
             ),
             DSGap.h4,
             const Wrap(
@@ -398,8 +396,8 @@ class _AboutChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = context.palette;
     return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: DS.sp3, vertical: DS.sp1 + 2),
+      padding:
+          const EdgeInsets.symmetric(horizontal: DS.sp3, vertical: DS.sp1 + 2),
       decoration: BoxDecoration(
         color: palette.surfaceLight,
         borderRadius: BorderRadius.circular(DS.rFull),

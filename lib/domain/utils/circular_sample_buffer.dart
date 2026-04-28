@@ -72,8 +72,7 @@ class CircularSampleBuffer<T> {
   int get totalEvicted => _totalEvicted;
 
   /// Fill percentage (0.0 - 1.0).
-  double get fillRatio =>
-      _maxCapacity > 0 ? _queue.length / _maxCapacity : 0.0;
+  double get fillRatio => _maxCapacity > 0 ? _queue.length / _maxCapacity : 0.0;
 
   /// Get the last N items as a List (for chart rendering).
   ///

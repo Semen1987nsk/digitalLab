@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../data/datasources/local/experiment_autosave_service.dart';
 import '../../../domain/entities/sensor_data.dart';
 import '../../../domain/entities/subject_area.dart';
 import '../../../core/di/providers.dart';
 import '../../blocs/experiment/experiment_provider.dart';
 import '../../themes/app_theme.dart';
+import '../../themes/design_tokens.dart';
 import '../home/home_page.dart';
 import '../history/history_page.dart';
 import '../calibration/calibration_page.dart';
@@ -61,7 +63,7 @@ const _kNavItems = [
   ),
 ];
 
-const double _kSidebarWidth = 92;
+const double _kSidebarWidth = 96;
 
 class AppShell extends ConsumerStatefulWidget {
   final SubjectArea subject;
@@ -144,31 +146,17 @@ class _AppShellState extends ConsumerState<AppShell> {
             child: Focus(
               focusNode: _shellFocusNode,
               autofocus: true,
-              child: Scaffold(
-          body: Row(
-            children: [
-              _PremiumSidebar(
-                subject: widget.subject,
-                onSubjectSelectionRequested: widget.onSubjectSelectionRequested,
-                selectedIndex: _selectedIndex,
-                onSelected: (i) => setState(() => _selectedIndex = i),
-                connectionStatus: connectionStatus,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Breakpoint: при ширине < 700 переключаемся на bottom bar
+                  // (типичный планшет в портрете). Десктоп и планшет в
+                  // ландшафте используют боковой rail.
+                  final isCompact = constraints.maxWidth < 700;
+                  return isCompact
+                      ? _buildCompactScaffold(connectionStatus)
+                      : _buildExpandedScaffold(connectionStatus);
+                },
               ),
-              Expanded(
-                child: IndexedStack(
-                  index: _selectedIndex,
-                  children: const [
-                    HomePage(),
-                    HistoryPage(),
-                    CalibrationPage(),
-                    SensorLinkingPage(),
-                    SettingsPage(),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
             ),
           ),
         ),
@@ -180,6 +168,59 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
   }
 
+  /// Десктоп / планшет в ландшафте — боковая панель 96dp.
+  Widget _buildExpandedScaffold(ConnectionStatus connectionStatus) {
+    return Scaffold(
+      body: Row(
+        children: [
+          _PremiumSidebar(
+            subject: widget.subject,
+            onSubjectSelectionRequested: widget.onSubjectSelectionRequested,
+            selectedIndex: _selectedIndex,
+            onSelected: _selectTab,
+            connectionStatus: connectionStatus,
+          ),
+          Expanded(child: _buildContentStack()),
+        ],
+      ),
+    );
+  }
+
+  /// Планшет в портрете / телефон — bottom NavigationBar (Material 3).
+  /// Выбор предмета и связь устройства уезжают в overflow-меню AppBar
+  /// каждой страницы (это родная роль AppBar.actions).
+  Widget _buildCompactScaffold(ConnectionStatus connectionStatus) {
+    return Scaffold(
+      body: SafeArea(child: _buildContentStack()),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _selectTab,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: [
+          for (final item in _kNavItems)
+            NavigationDestination(
+              icon: Icon(item.icon),
+              selectedIcon: Icon(item.activeIcon),
+              label: item.label,
+              tooltip: item.tooltip,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContentStack() {
+    return IndexedStack(
+      index: _selectedIndex,
+      children: const [
+        HomePage(),
+        HistoryPage(),
+        CalibrationPage(),
+        SensorLinkingPage(),
+        SettingsPage(),
+      ],
+    );
+  }
 }
 
 class RecoveryPromptPresenter extends ConsumerStatefulWidget {
@@ -341,23 +382,51 @@ class _PremiumSidebar extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 14),
             child: Divider(height: 1),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: DS.sp3),
           _WorkspaceSwitcher(
             subject: subject,
             onTap: onSubjectSelectionRequested,
           ),
-          const SizedBox(height: 10),
-          const Text(
-            'v2.0',
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.textHint,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.3,
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: DS.sp2),
+          const _AppVersionLabel(),
+          const SizedBox(height: DS.sp4),
         ],
+      ),
+    );
+  }
+}
+
+/// Динамическая версия из pubspec.yaml через `package_info_plus`.
+class _AppVersionLabel extends StatefulWidget {
+  const _AppVersionLabel();
+
+  @override
+  State<_AppVersionLabel> createState() => _AppVersionLabelState();
+}
+
+class _AppVersionLabelState extends State<_AppVersionLabel> {
+  String? _version;
+
+  @override
+  void initState() {
+    super.initState();
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _version = 'v${info.version}');
+    }).catchError((_) {
+      // На платформах без package info оставляем пустоту
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_version == null) return const SizedBox(height: 14);
+    return Text(
+      _version!,
+      style: const TextStyle(
+        fontSize: 10,
+        color: AppColors.textHint,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.3,
       ),
     );
   }
@@ -602,8 +671,9 @@ class _NavButtonState extends State<_NavButton> {
                             duration: const Duration(milliseconds: 180),
                             style: TextStyle(
                               fontSize: 10.5,
-                              fontWeight:
-                                  isSelected ? FontWeight.w600 : FontWeight.w500,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
                               color: isSelected
                                   ? AppColors.textPrimary
                                   : AppColors.textSecondary,

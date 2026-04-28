@@ -1,5 +1,5 @@
 /// Форматирование физических величин с автоматическим выбором единиц
-/// 
+///
 /// Соответствует:
 /// - Международной системе СИ
 /// - Школьным стандартам РФ (ФГОС)
@@ -7,19 +7,19 @@
 library;
 
 /// Форматирует расстояние с автоматическим выбором единиц
-/// 
+///
 /// Примеры:
 /// - 5 мм → "5.0 мм"
-/// - 50 мм → "5.0 см"  
+/// - 50 мм → "5.0 см"
 /// - 1720 мм → "172.0 см" или "1.72 м"
 /// - 15000 мм → "15.0 м"
 class DistanceFormatter {
   /// Минимальное значение для показа в см (мм)
-  static const double _cmThreshold = 10.0;  // 1 см
-  
+  static const double _cmThreshold = 10.0; // 1 см
+
   /// Минимальное значение для показа в м (мм)
-  static const double _mThreshold = 1000.0;  // 1 м
-  
+  static const double _mThreshold = 1000.0; // 1 м
+
   /// Форматировать расстояние (входные данные в мм)
   static String format(double valueMm, {int decimals = 1}) {
     if (valueMm.abs() >= _mThreshold) {
@@ -35,7 +35,7 @@ class DistanceFormatter {
       return '${valueMm.toStringAsFixed(decimals)} мм';
     }
   }
-  
+
   /// Получить значение в указанных единицах
   static double convert(double valueMm, DistanceUnit unit) {
     switch (unit) {
@@ -47,7 +47,7 @@ class DistanceFormatter {
         return valueMm / 1000.0;
     }
   }
-  
+
   /// Получить название единицы измерения
   static String unitName(DistanceUnit unit) {
     switch (unit) {
@@ -59,12 +59,12 @@ class DistanceFormatter {
         return 'м';
     }
   }
-  
+
   /// Автоматически определить лучшую единицу для диапазона значений
   static DistanceUnit bestUnit(double minMm, double maxMm) {
     final range = (maxMm - minMm).abs();
     final maxAbs = maxMm.abs();
-    
+
     if (maxAbs >= _mThreshold || range >= _mThreshold) {
       return DistanceUnit.m;
     } else if (maxAbs >= _cmThreshold || range >= _cmThreshold) {
@@ -83,7 +83,7 @@ class TemperatureFormatter {
   static String format(double valueCelsius, {int decimals = 1}) {
     return '${valueCelsius.toStringAsFixed(decimals)} °C';
   }
-  
+
   static double toKelvin(double celsius) => celsius + 273.15;
   static double toFahrenheit(double celsius) => celsius * 9 / 5 + 32;
 }
@@ -125,13 +125,13 @@ class PressureFormatter {
       return '${valuePa.toStringAsFixed(decimals)} Па';
     }
   }
-  
+
   /// Конвертация в мм рт.ст. (для барометра)
   static String formatMmHg(double valuePa, {int decimals = 1}) {
     final mmHg = valuePa / 133.322;
     return '${mmHg.toStringAsFixed(decimals)} мм рт.ст.';
   }
-  
+
   /// Конвертация в атмосферы
   static String formatAtm(double valuePa, {int decimals = 3}) {
     final atm = valuePa / 101325;
@@ -153,7 +153,7 @@ class TimeFormatter {
       return '$minutes:${seconds.toStringAsFixed(1).padLeft(4, '0')}';
     }
   }
-  
+
   /// Для оси X графика (только секунды)
   static String formatAxisX(int timestampMs) {
     final seconds = timestampMs / 1000.0;

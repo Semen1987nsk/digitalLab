@@ -101,7 +101,7 @@ void main() {
 
       expect(payload[0], setSampleRate);
       expect(payload[1], 100); // lo byte
-      expect(payload[2], 0);   // hi byte (100 < 256)
+      expect(payload[2], 0); // hi byte (100 < 256)
       expect(crc8(payload.sublist(0, 3)), payload[3],
           reason: 'CRC must cover [cmd, lo, hi]');
     });
@@ -110,7 +110,7 @@ void main() {
       const hz = 1000;
       final payload = Uint8List(4);
       payload[0] = setSampleRate;
-      payload[1] = hz & 0xFF;       // 0xE8
+      payload[1] = hz & 0xFF; // 0xE8
       payload[2] = (hz >> 8) & 0xFF; // 0x03
       payload[3] = crc8(payload.sublist(0, 3));
 

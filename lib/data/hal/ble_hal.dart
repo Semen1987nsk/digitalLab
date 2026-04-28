@@ -70,8 +70,7 @@ class _ValidField {
   static const int lux = 1 << 16;
   static const int radiation = 1 << 17;
 
-  static const int allKnownBits =
-      distance |
+  static const int allKnownBits = distance |
       voltage |
       current |
       temperature |
@@ -182,7 +181,8 @@ class BleHAL implements HALInterface {
       return false;
     }
 
-    _reconnectTimer?.cancel(); // отменяем отложенный reconnect при ручном подключении
+    _reconnectTimer
+        ?.cancel(); // отменяем отложенный reconnect при ручном подключении
     _reconnectAttempts = 0; // Сброс счётчика при ручном вызове connect()
     _isConnecting = true;
 
@@ -252,13 +252,15 @@ class BleHAL implements HALInterface {
             // Exponential backoff: 2s, 4s, 8s, 16s, 30s, 30s, ...
             final delaySec = (1 << _reconnectAttempts).clamp(2, 30); // 2^n
             final delay = Duration(seconds: delaySec);
-            debugPrint('BLE HAL: Автопереподключение #$_reconnectAttempts/$_maxReconnectAttempts через ${delay.inSeconds}с...');
+            debugPrint(
+                'BLE HAL: Автопереподключение #$_reconnectAttempts/$_maxReconnectAttempts через ${delay.inSeconds}с...');
             _reconnectTimer?.cancel();
             _reconnectTimer = Timer(delay, () {
               if (!_disposed) connect();
             });
           } else if (_reconnectAttempts >= _maxReconnectAttempts) {
-            debugPrint('BLE HAL: Исчерпаны попытки переподключения ($_maxReconnectAttempts). '
+            debugPrint(
+                'BLE HAL: Исчерпаны попытки переподключения ($_maxReconnectAttempts). '
                 'Пользователь может нажать "Переподключить" для сброса.');
             _connectionStatusController.add(ConnectionStatus.error);
           }
@@ -294,18 +296,17 @@ class BleHAL implements HALInterface {
       // 7) Читаем информацию об устройстве
       await _readDeviceInfo();
 
-        // 7.1) Проверка совместимости протокола
-        if (_deviceInfo != null &&
+      // 7.1) Проверка совместимости протокола
+      if (_deviceInfo != null &&
           !_isFirmwareCompatible(_deviceInfo!.firmwareVersion)) {
-        const requiredVersion =
-          '$_minFwMajor.$_minFwMinor.$_minFwPatch';
+        const requiredVersion = '$_minFwMajor.$_minFwMinor.$_minFwPatch';
         final currentVersion = _deviceInfo!.firmwareVersion;
         debugPrint('BLE HAL: Несовместимая прошивка: $currentVersion '
-          '(требуется >= $requiredVersion)');
+            '(требуется >= $requiredVersion)');
         await device.disconnect();
         _connectionStatusController.add(ConnectionStatus.error);
         return false;
-        }
+      }
 
       // 8) Подписываемся на данные
       await _subscribeToData();
@@ -315,7 +316,6 @@ class BleHAL implements HALInterface {
       _connectionStatusController.add(ConnectionStatus.connected);
       debugPrint('BLE HAL: Готов к работе');
       return true;
-
     } on TimeoutException catch (e) {
       debugPrint('BLE HAL: Таймаут: $e');
       _connectionStatusController.add(ConnectionStatus.error);
@@ -445,7 +445,7 @@ class BleHAL implements HALInterface {
         try {
           if (value.isEmpty) return;
           _lastDataAt = DateTime.now();
-          
+
           // Отправляем сырые байты в фоновый Isolate для парсинга
           _dataIsolate.processRawData(Uint8List.fromList(value));
         } catch (e) {
@@ -487,15 +487,28 @@ class BleHAL implements HALInterface {
         sensors = _parseEnabledSensors(data);
       } catch (e) {
         debugPrint('BLE HAL: Не удалось прочитать config: $e');
-        sensors = ['distance', 'voltage', 'current', 'temperature',
-                   'pressure', 'acceleration', 'magnetic_field'];
+        sensors = [
+          'distance',
+          'voltage',
+          'current',
+          'temperature',
+          'pressure',
+          'acceleration',
+          'magnetic_field'
+        ];
       }
     }
 
     if (sensors.isEmpty) {
       // Дефолтный набор Классики
-      sensors = ['voltage', 'current', 'pressure', 'temperature',
-                 'acceleration', 'magnetic_field'];
+      sensors = [
+        'voltage',
+        'current',
+        'pressure',
+        'temperature',
+        'acceleration',
+        'magnetic_field'
+      ];
     }
 
     _deviceInfo = DeviceInfo(
@@ -507,7 +520,7 @@ class BleHAL implements HALInterface {
     );
 
     debugPrint('BLE HAL: Device info: $fwVersion, battery=$battery%, '
-      'sensors=${sensors.length}, framed=$_requireFramedPackets');
+        'sensors=${sensors.length}, framed=$_requireFramedPackets');
   }
 
   // ── Disconnect ───────────────────────────────────────────────

@@ -53,50 +53,6 @@ class SignalProcessor {
   }) {
     // Настраиваем фильтры под тип датчика
     switch (sensorType) {
-      case SensorType.distance:
-        // ── SpikeGuard + 1€ Filter (мировой стандарт, v2) ──
-        //
-        // Проблема: V802 даёт целые сантиметры (70мм, 80мм).
-        // При реальном расстоянии 75мм чередуются 70↔80.
-        // Kalman/EMA не справляются — слишком медленные или
-        // пропускают шум квантования.
-        //
-        // Решение: 1€ Filter с direction-based dead-zone.
-        //   - Dead-zone = 10мм (1 квант) с анализом НАПРАВЛЕНИЯ:
-        //     чередование 70↔80 (смена знака) → шум → подавлен
-        //     монотонное 70→80→90 (один знак) → движение → пропущен
-        //   - Первый шаг в новом направлении → подавлен (100мс)
-        //   - Изменения >10мм за сэмпл → мгновенный отклик
-        //
-        // v2: SpikeGuard вместо MedianFilter:
-        //   Median(3) добавлял 100мс к КАЖДОМУ значению.
-        //   SpikeGuard: 0мс для нормальных, 100мс только для выбросов.
-        //   maxDelta=500мм = 5м/с @ 10Гц — быстрее руки не бывает.
-        //
-        // v2: minCutoff 0.3→0.5Hz:
-        //   α покоя: 0.16→0.24. С dead-zone джиттер и так подавлен,
-        //   поэтому можно увеличить cutoff для быстрого settling.
-        //
-        // Параметры (оптимизированы для V802 @ 10Hz):
-        //   minCutoff=0.5Hz → alpha≈0.24 в покое → быстрое settling
-        //   beta=0.5 → при 100мм/с: cutoff=50Hz → alpha≈0.97 → instant
-        //   dCutoff=1.0 → стандартное сглаживание производной
-        //
-        // Бюджет задержки (v1 → v2):
-        //   Spike guard: 100мс → **0мс** (SpikeGuard vs Median)
-        //   Dead-zone:   100мс → 100мс (без изменений)
-        //   1€ settling: ~50мс → ~30мс (minCutoff 0.3→0.5)
-        //   ИТОГО:       ~250мс → **~130мс** (почти 2× быстрее)
-        _medianFilter = MedianFilter(windowSize: 3); // for other sensors
-        _spikeGuard = SpikeGuard(maxDelta: 500.0);
-        _oneEuro = OneEuroFilter(
-          frequency: 10.0,
-          minCutoff: 0.5,
-          beta: 0.5,
-          dCutoff: 1.0,
-          derivativeDeadZone: 10.0,
-        );
-
       case SensorType.temperature:
         // Температура меняется очень медленно
         _medianFilter = MedianFilter(windowSize: 5);
@@ -129,30 +85,6 @@ class SignalProcessor {
         _kalmanFilter = KalmanFilter(
           processNoise: 0.01,
           measurementNoise: 1.0,
-        );
-
-      case SensorType.force:
-        // Силомер — средняя динамика
-        _medianFilter = MedianFilter(windowSize: 3);
-        _kalmanFilter = KalmanFilter(
-          processNoise: 0.5,
-          measurementNoise: 0.3,
-        );
-
-      case SensorType.lux:
-        // Освещённость — умеренная динамика
-        _medianFilter = MedianFilter(windowSize: 3);
-        _kalmanFilter = KalmanFilter(
-          processNoise: 5.0,
-          measurementNoise: 2.0,
-        );
-
-      case SensorType.radiation:
-        // Счётчик Гейгера — статистический шум, усреднение
-        _medianFilter = MedianFilter(windowSize: 5);
-        _kalmanFilter = KalmanFilter(
-          processNoise: 2.0,
-          measurementNoise: 10.0,
         );
     }
   }

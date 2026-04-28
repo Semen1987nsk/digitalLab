@@ -24,7 +24,8 @@ void main() {
     });
 
     test('converts between units', () {
-      expect(DistanceFormatter.convert(1000.0, DistanceUnit.mm), equals(1000.0));
+      expect(
+          DistanceFormatter.convert(1000.0, DistanceUnit.mm), equals(1000.0));
       expect(DistanceFormatter.convert(1000.0, DistanceUnit.cm), equals(100.0));
       expect(DistanceFormatter.convert(1000.0, DistanceUnit.m), equals(1.0));
     });

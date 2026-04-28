@@ -82,9 +82,20 @@ class SensorPacket extends Equatable {
 
   @override
   List<Object?> get props => [
-        timestampMs, voltageV, currentA, pressurePa, temperatureC,
-        accelX, accelY, accelZ, magneticFieldMt, humidityPct,
-        distanceMm, forceN, luxLx, radiationCpm,
+        timestampMs,
+        voltageV,
+        currentA,
+        pressurePa,
+        temperatureC,
+        accelX,
+        accelY,
+        accelZ,
+        magneticFieldMt,
+        humidityPct,
+        distanceMm,
+        forceN,
+        luxLx,
+        radiationCpm,
       ];
 
   @override
@@ -92,14 +103,18 @@ class SensorPacket extends Equatable {
     final parts = <String>['t=${timestampMs}ms'];
     if (voltageV != null) parts.add('V=${voltageV!.toStringAsFixed(3)}');
     if (currentA != null) parts.add('I=${currentA!.toStringAsFixed(4)}');
-    if (temperatureC != null) parts.add('T=${temperatureC!.toStringAsFixed(1)}°C');
-    if (pressurePa != null) parts.add('P=${(pressurePa! / 1000).toStringAsFixed(1)}кПа');
-    if (magneticFieldMt != null) parts.add('B=${magneticFieldMt!.toStringAsFixed(1)}мТл');
+    if (temperatureC != null)
+      parts.add('T=${temperatureC!.toStringAsFixed(1)}°C');
+    if (pressurePa != null)
+      parts.add('P=${(pressurePa! / 1000).toStringAsFixed(1)}кПа');
+    if (magneticFieldMt != null)
+      parts.add('B=${magneticFieldMt!.toStringAsFixed(1)}мТл');
     if (humidityPct != null) parts.add('H=${humidityPct!.toStringAsFixed(1)}%');
     if (distanceMm != null) parts.add('d=${distanceMm!.toStringAsFixed(1)}мм');
     if (forceN != null) parts.add('F=${forceN!.toStringAsFixed(2)}Н');
     if (luxLx != null) parts.add('E=${luxLx!.toStringAsFixed(0)}лк');
-    if (radiationCpm != null) parts.add('R=${radiationCpm!.toStringAsFixed(0)}имп/мин');
+    if (radiationCpm != null)
+      parts.add('R=${radiationCpm!.toStringAsFixed(0)}имп/мин');
     return 'SensorPacket(${parts.join(', ')})';
   }
 }

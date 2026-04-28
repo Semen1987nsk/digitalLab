@@ -59,8 +59,7 @@ class Experiments extends Table {
   TextColumn get title => text().withDefault(const Constant(''))();
 
   /// Сколько точек уже сохранено (кэш — чтобы не делать COUNT каждый раз)
-  IntColumn get measurementCount =>
-      integer().withDefault(const Constant(0))();
+  IntColumn get measurementCount => integer().withDefault(const Constant(0))();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -72,8 +71,7 @@ class Measurements extends Table {
   IntColumn get id => integer().autoIncrement()();
 
   /// FK → Experiments.id
-  IntColumn get experimentId =>
-      integer().references(Experiments, #id)();
+  IntColumn get experimentId => integer().references(Experiments, #id)();
 
   /// Время от начала эксперимента, мс
   IntColumn get timestampMs => integer()();
@@ -159,8 +157,7 @@ class AppDatabase extends _$AppDatabase {
   /// Вызывается один раз при старте приложения.
   Future<int> markInterruptedExperiments() {
     return (update(experiments)
-          ..where(
-              (t) => t.status.equals(ExperimentStatus.running.index)))
+          ..where((t) => t.status.equals(ExperimentStatus.running.index)))
         .write(const ExperimentsCompanion(
       status: Value(ExperimentStatus.interrupted),
     ));
@@ -216,8 +213,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Обновляет кэшированное число измерений.
   Future<void> updateMeasurementCount(int experimentId, int count) {
-    return (update(experiments)
-          ..where((t) => t.id.equals(experimentId)))
+    return (update(experiments)..where((t) => t.id.equals(experimentId)))
         .write(ExperimentsCompanion(measurementCount: Value(count)));
   }
 

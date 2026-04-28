@@ -5,7 +5,8 @@ enum SubjectArea {
     id: 'physics',
     title: 'Физика',
     subtitle: 'Цифровая лаборатория',
-    description: 'Измерения, графики, эксперименты и работа с датчиками в реальном времени.',
+    description:
+        'Измерения, графики, эксперименты и работа с датчиками в реальном времени.',
     icon: Icons.science_rounded,
     accentColor: Color(0xFF00BCD4),
     statusLabel: 'Готово',
@@ -15,7 +16,8 @@ enum SubjectArea {
     id: 'chemistry',
     title: 'Химия',
     subtitle: 'Предметная рабочая область',
-    description: 'Практикумы, наблюдения реакций, измерительные сценарии и цифровые лабораторные работы.',
+    description:
+        'Практикумы, наблюдения реакций, измерительные сценарии и цифровые лабораторные работы.',
     icon: Icons.biotech_rounded,
     accentColor: Color(0xFF8BC34A),
     statusLabel: 'Скоро',
@@ -25,7 +27,8 @@ enum SubjectArea {
     id: 'biology',
     title: 'Биология',
     subtitle: 'Предметная рабочая область',
-    description: 'Исследования живых систем, микропрактикумы, измерения среды и демонстрационные режимы.',
+    description:
+        'Исследования живых систем, микропрактикумы, измерения среды и демонстрационные режимы.',
     icon: Icons.eco_rounded,
     accentColor: Color(0xFF4CAF50),
     statusLabel: 'Скоро',
@@ -35,7 +38,8 @@ enum SubjectArea {
     id: 'mathematics',
     title: 'Математика',
     subtitle: 'Интерактивная среда',
-    description: 'Визуализация функций, моделирование, анализ данных и цифровые задания для урока.',
+    description:
+        'Визуализация функций, моделирование, анализ данных и цифровые задания для урока.',
     icon: Icons.functions_rounded,
     accentColor: Color(0xFFFFB300),
     statusLabel: 'Скоро',
@@ -45,7 +49,8 @@ enum SubjectArea {
     id: 'ecology',
     title: 'Экология',
     subtitle: 'Полевые и школьные исследования',
-    description: 'Мониторинг окружающей среды, работа с параметрами воздуха, воды, света и учебными экологическими кейсами.',
+    description:
+        'Мониторинг окружающей среды, работа с параметрами воздуха, воды, света и учебными экологическими кейсами.',
     icon: Icons.public_rounded,
     accentColor: Color(0xFF26A69A),
     statusLabel: 'Скоро',
@@ -55,7 +60,8 @@ enum SubjectArea {
     id: 'physiology',
     title: 'Физиология',
     subtitle: 'Наблюдение за показателями организма',
-    description: 'Учебные сценарии по дыханию, пульсу, реакции организма и анализу физиологических данных в безопасном школьном формате.',
+    description:
+        'Учебные сценарии по дыханию, пульсу, реакции организма и анализу физиологических данных в безопасном школьном формате.',
     icon: Icons.monitor_heart_rounded,
     accentColor: Color(0xFFE57373),
     statusLabel: 'Скоро',
@@ -65,7 +71,8 @@ enum SubjectArea {
     id: 'geography',
     title: 'География',
     subtitle: 'Измерения среды и наблюдения',
-    description: 'Исследование климата, давления, влажности, освещённости и природных процессов в классе и на выездных занятиях.',
+    description:
+        'Исследование климата, давления, влажности, освещённости и природных процессов в классе и на выездных занятиях.',
     icon: Icons.travel_explore_rounded,
     accentColor: Color(0xFF64B5F6),
     statusLabel: 'Скоро',
@@ -75,7 +82,8 @@ enum SubjectArea {
     id: 'obzr',
     title: 'ОБЗР',
     subtitle: 'Безопасность и практические сценарии',
-    description: 'Тренировочные модули по безопасности, действиям в среде, измерению факторов риска и наглядным учебным ситуациям.',
+    description:
+        'Тренировочные модули по безопасности, действиям в среде, измерению факторов риска и наглядным учебным ситуациям.',
     icon: Icons.shield_rounded,
     accentColor: Color(0xFF90A4AE),
     statusLabel: 'Скоро',

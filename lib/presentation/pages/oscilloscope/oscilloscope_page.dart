@@ -153,14 +153,14 @@ class _OscilloscopePageState extends ConsumerState<OscilloscopePage> {
     enabled: true,
     sensorType: SensorType.voltage,
     voltsPerDiv: 2.0,
-    color: Color(0xFFFFEB3B), // Жёлтый — классика осциллографа
+    color: AppColors.oscChannel1, // Жёлтый — классика осциллографа
   );
 
   var _ch2 = const ChannelSettings(
     enabled: false,
     sensorType: SensorType.current,
     voltsPerDiv: 0.2,
-    color: Color(0xFF00BFFF), // Голубой — канал 2
+    color: AppColors.oscChannel2, // Голубой — канал 2
   );
 
   var _trigger = const TriggerSettings();
@@ -203,9 +203,8 @@ class _OscilloscopePageState extends ConsumerState<OscilloscopePage> {
 
     // Программная калибровка напряжения (прокидывается в painter + measurements)
     final calState = ref.watch(voltageCalibrationProvider);
-    final voltageCal = calState.calibration.isModified
-        ? calState.calibration
-        : null;
+    final voltageCal =
+        calState.calibration.isModified ? calState.calibration : null;
 
     // Обновляем буфер только когда данные действительно изменились
     if (experiment.data.length != _lastDataLength) {
@@ -216,7 +215,8 @@ class _OscilloscopePageState extends ConsumerState<OscilloscopePage> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E14), // Ещё темнее для экрана осциллографа
+      backgroundColor:
+          AppColors.oscScreenBg, // Ещё темнее для экрана осциллографа
       appBar: _buildAppBar(isConnected),
       body: Column(
         children: [
@@ -305,7 +305,7 @@ class _OscilloscopePageState extends ConsumerState<OscilloscopePage> {
 
   AppBar _buildAppBar(bool isConnected) {
     return AppBar(
-      backgroundColor: const Color(0xFF0F1318),
+      backgroundColor: AppColors.oscPanelBg,
       title: Row(
         children: [
           Container(
@@ -367,7 +367,8 @@ class _OscilloscopePageState extends ConsumerState<OscilloscopePage> {
       actions: [
         // Измерения
         IconButton(
-          onPressed: () => setState(() => _showMeasurements = !_showMeasurements),
+          onPressed: () =>
+              setState(() => _showMeasurements = !_showMeasurements),
           icon: Icon(
             Icons.analytics_outlined,
             color: _showMeasurements ? AppColors.accent : AppColors.textHint,
@@ -394,7 +395,7 @@ class _OscilloscopePageState extends ConsumerState<OscilloscopePage> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       decoration: const BoxDecoration(
-        color: Color(0xFF0F1318),
+        color: AppColors.oscPanelBg,
         border: Border(top: BorderSide(color: AppColors.cardBorder)),
       ),
       child: Column(
@@ -464,14 +465,16 @@ class _OscilloscopePageState extends ConsumerState<OscilloscopePage> {
                 label: 'CH1',
                 color: _ch1.color,
                 enabled: _ch1.enabled,
-                onToggle: () => setState(() => _ch1 = _ch1.copyWith(enabled: !_ch1.enabled)),
+                onToggle: () => setState(
+                    () => _ch1 = _ch1.copyWith(enabled: !_ch1.enabled)),
               ),
               const SizedBox(width: 6),
               _ChannelToggle(
                 label: 'CH2',
                 color: _ch2.color,
                 enabled: _ch2.enabled,
-                onToggle: () => setState(() => _ch2 = _ch2.copyWith(enabled: !_ch2.enabled)),
+                onToggle: () => setState(
+                    () => _ch2 = _ch2.copyWith(enabled: !_ch2.enabled)),
               ),
             ],
           ),
@@ -482,39 +485,45 @@ class _OscilloscopePageState extends ConsumerState<OscilloscopePage> {
           Row(
             children: [
               // Режим триггера
-              const Text('Триггер:', style: TextStyle(
-                fontSize: 12, color: AppColors.textSecondary)),
+              const Text('Триггер:',
+                  style:
+                      TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               const SizedBox(width: 8),
               _TriggerModeButton(
                 mode: _trigger.mode,
-                onChanged: (m) => setState(() => _trigger = _trigger.copyWith(mode: m)),
+                onChanged: (m) =>
+                    setState(() => _trigger = _trigger.copyWith(mode: m)),
               ),
               const SizedBox(width: 12),
               // Фронт
               _OscChip(
-                label: _trigger.edge == TriggerEdge.rising ? '↗ Рост' : '↘ Спад',
+                label:
+                    _trigger.edge == TriggerEdge.rising ? '↗ Рост' : '↘ Спад',
                 color: AppColors.warning,
                 onTap: () => setState(() => _trigger = _trigger.copyWith(
-                  edge: _trigger.edge == TriggerEdge.rising
-                      ? TriggerEdge.falling
-                      : TriggerEdge.rising,
-                )),
+                      edge: _trigger.edge == TriggerEdge.rising
+                          ? TriggerEdge.falling
+                          : TriggerEdge.rising,
+                    )),
               ),
               const SizedBox(width: 12),
               // Источник
               _OscChip(
-                label: _trigger.source == OscChannel.ch1 ? 'Src: CH1' : 'Src: CH2',
-                color: _trigger.source == OscChannel.ch1 ? _ch1.color : _ch2.color,
+                label:
+                    _trigger.source == OscChannel.ch1 ? 'Src: CH1' : 'Src: CH2',
+                color:
+                    _trigger.source == OscChannel.ch1 ? _ch1.color : _ch2.color,
                 onTap: () => setState(() => _trigger = _trigger.copyWith(
-                  source: _trigger.source == OscChannel.ch1
-                      ? OscChannel.ch2
-                      : OscChannel.ch1,
-                )),
+                      source: _trigger.source == OscChannel.ch1
+                          ? OscChannel.ch2
+                          : OscChannel.ch1,
+                    )),
               ),
               const Spacer(),
               // Уровень триггера
-              const Text('Уровень:', style: TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary)),
+              const Text('Уровень:',
+                  style:
+                      TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               const SizedBox(width: 8),
               SizedBox(
                 width: 120,
@@ -525,8 +534,8 @@ class _OscilloscopePageState extends ConsumerState<OscilloscopePage> {
                   divisions: 200,
                   label: _trigger.level.toStringAsFixed(2),
                   activeColor: AppColors.warning,
-                  onChanged: (v) => setState(() =>
-                      _trigger = _trigger.copyWith(level: v)),
+                  onChanged: (v) =>
+                      setState(() => _trigger = _trigger.copyWith(level: v)),
                 ),
               ),
               Text(
@@ -661,9 +670,9 @@ class _OscilloscopeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF0A0E14),
+        color: AppColors.oscScreenBg,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFF1C2128), width: 1),
+        border: Border.all(color: AppColors.oscScreenBorder, width: 1),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(3),
@@ -734,15 +743,15 @@ class _OscPainter extends CustomPainter {
   /// Классическая осциллографическая сетка
   void _drawGrid(Canvas canvas, Size size) {
     final majorPaint = Paint()
-      ..color = const Color(0xFF1C2833)
+      ..color = AppColors.oscGridMajor
       ..strokeWidth = 0.5;
 
     final minorPaint = Paint()
-      ..color = const Color(0xFF121A22)
+      ..color = AppColors.oscGridMinor
       ..strokeWidth = 0.3;
 
     final centerPaint = Paint()
-      ..color = const Color(0xFF2A3540)
+      ..color = AppColors.oscGridCenter
       ..strokeWidth = 1.0;
 
     final dx = size.width / _gridDivsX;
@@ -773,21 +782,23 @@ class _OscPainter extends CustomPainter {
 
     // Засечки на центральных осях
     final tickPaint = Paint()
-      ..color = const Color(0xFF2A3540)
+      ..color = AppColors.oscGridCenter
       ..strokeWidth = 0.8;
 
     // Горизонтальные засечки по центру Y
     final cy = size.height / 2;
     for (int i = 0; i <= _gridDivsX * 5; i++) {
       final x = i * dx / 5;
-      canvas.drawLine(Offset(x, cy - tickLen), Offset(x, cy + tickLen), tickPaint);
+      canvas.drawLine(
+          Offset(x, cy - tickLen), Offset(x, cy + tickLen), tickPaint);
     }
 
     // Вертикальные засечки по центру X
     final cx = size.width / 2;
     for (int i = 0; i <= _gridDivsY * 5; i++) {
       final y = i * dy / 5;
-      canvas.drawLine(Offset(cx - tickLen, y), Offset(cx + tickLen, y), tickPaint);
+      canvas.drawLine(
+          Offset(cx - tickLen, y), Offset(cx + tickLen, y), tickPaint);
     }
   }
 
@@ -803,7 +814,7 @@ class _OscPainter extends CustomPainter {
     if (y < 0 || y > size.height) return;
 
     final paint = Paint()
-      ..color = const Color(0xFFD29922).withValues(alpha: 0.5)
+      ..color = AppColors.warning.withValues(alpha: 0.5)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 
@@ -829,7 +840,7 @@ class _OscPainter extends CustomPainter {
 
     canvas.drawPath(
       markerPath,
-      Paint()..color = const Color(0xFFD29922).withValues(alpha: 0.8),
+      Paint()..color = AppColors.warning.withValues(alpha: 0.8),
     );
   }
 
@@ -851,7 +862,8 @@ class _OscPainter extends CustomPainter {
       final t = packet.timeSeconds;
 
       final value = SensorUtils.getCalibratedValue(packet, ch.sensorType,
-          voltageCalibration: ch.sensorType == SensorType.voltage ? voltageCalibration : null);
+          voltageCalibration:
+              ch.sensorType == SensorType.voltage ? voltageCalibration : null);
       if (value == null) continue;
 
       // Нормализуем время → X
@@ -936,8 +948,10 @@ class _OscPainter extends CustomPainter {
     cursorPaint.color = Colors.white.withValues(alpha: 0.6);
     final x1 = cursorX1 * size.width;
     final x2 = cursorX2 * size.width;
-    _drawDashedLine(canvas, Offset(x1, 0), Offset(x1, size.height), cursorPaint);
-    _drawDashedLine(canvas, Offset(x2, 0), Offset(x2, size.height), cursorPaint);
+    _drawDashedLine(
+        canvas, Offset(x1, 0), Offset(x1, size.height), cursorPaint);
+    _drawDashedLine(
+        canvas, Offset(x2, 0), Offset(x2, size.height), cursorPaint);
 
     // Y-курсоры (горизонтальные, зелёные)
     cursorPaint.color = AppColors.accent.withValues(alpha: 0.6);
@@ -950,7 +964,8 @@ class _OscPainter extends CustomPainter {
     final deltaT = (cursorX2 - cursorX1) * timePerDiv * _gridDivsX;
     final textPainter = TextPainter(
       text: TextSpan(
-        text: 'Δt = ${deltaT.toStringAsFixed(3)} с  f = ${deltaT > 0 ? (1 / deltaT).toStringAsFixed(1) : "∞"} Гц',
+        text:
+            'Δt = ${deltaT.toStringAsFixed(3)} с  f = ${deltaT > 0 ? (1 / deltaT).toStringAsFixed(1) : "∞"} Гц',
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.7),
           fontSize: 11,
@@ -1037,10 +1052,12 @@ class _OscPainter extends CustomPainter {
       ),
       textDirection: ui.TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(
-      (size.width - tp.width) / 2,
-      (size.height - tp.height) / 2,
-    ));
+    tp.paint(
+        canvas,
+        Offset(
+          (size.width - tp.width) / 2,
+          (size.height - tp.height) / 2,
+        ));
   }
 
   @override
@@ -1071,7 +1088,7 @@ class _MeasurementsBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: const BoxDecoration(
-        color: Color(0xFF0F1318),
+        color: AppColors.oscPanelBg,
         border: Border(top: BorderSide(color: AppColors.cardBorder)),
       ),
       child: Row(
@@ -1093,11 +1110,31 @@ class _MeasurementsBar extends StatelessWidget {
   List<Widget> _buildChannelMeasurements(ChannelSettings ch) {
     final m = _computeMeasurements(ch);
     return [
-      _MeasItem(label: 'Vpp', value: m.vpp, unit: ch.sensorType.unit, color: ch.color),
-      _MeasItem(label: 'Vrms', value: m.vrms, unit: ch.sensorType.unit, color: ch.color),
-      _MeasItem(label: 'Max', value: m.vmax, unit: ch.sensorType.unit, color: ch.color),
-      _MeasItem(label: 'Min', value: m.vmin, unit: ch.sensorType.unit, color: ch.color),
-      _MeasItem(label: 'Avg', value: m.vavg, unit: ch.sensorType.unit, color: ch.color),
+      _MeasItem(
+          label: 'Vpp',
+          value: m.vpp,
+          unit: ch.sensorType.unit,
+          color: ch.color),
+      _MeasItem(
+          label: 'Vrms',
+          value: m.vrms,
+          unit: ch.sensorType.unit,
+          color: ch.color),
+      _MeasItem(
+          label: 'Max',
+          value: m.vmax,
+          unit: ch.sensorType.unit,
+          color: ch.color),
+      _MeasItem(
+          label: 'Min',
+          value: m.vmin,
+          unit: ch.sensorType.unit,
+          color: ch.color),
+      _MeasItem(
+          label: 'Avg',
+          value: m.vavg,
+          unit: ch.sensorType.unit,
+          color: ch.color),
       _MeasItem(label: 'Freq', value: m.frequency, unit: 'Гц', color: ch.color),
     ];
   }
@@ -1116,7 +1153,8 @@ class _MeasurementsBar extends StatelessWidget {
     for (final p in data) {
       if (p.timeSeconds < startTime) continue;
       final v = SensorUtils.getCalibratedValue(p, ch.sensorType,
-          voltageCalibration: ch.sensorType == SensorType.voltage ? voltageCalibration : null);
+          voltageCalibration:
+              ch.sensorType == SensorType.voltage ? voltageCalibration : null);
       if (v != null) {
         values.add(v);
         times.add(p.timeSeconds);
@@ -1187,8 +1225,11 @@ class _MeasItem extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.6),
-                fontWeight: FontWeight.w500, letterSpacing: 0.5),
+            style: TextStyle(
+                fontSize: 9,
+                color: color.withValues(alpha: 0.6),
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5),
           ),
           Text(
             value != null ? '${value!.toStringAsFixed(2)} $unit' : '—',
@@ -1214,7 +1255,8 @@ class _InfoChip extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _InfoChip({required this.label, required this.value, required this.color});
+  const _InfoChip(
+      {required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -1228,12 +1270,18 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w500)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 10,
+                  color: color.withValues(alpha: 0.6),
+                  fontWeight: FontWeight.w500)),
           const SizedBox(width: 4),
-          Text(value, style: TextStyle(fontSize: 11, color: color,
-              fontWeight: FontWeight.w700,
-              fontFeatures: const [FontFeature.tabularFigures()])),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 11,
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
         ],
       ),
     );
@@ -1261,7 +1309,8 @@ class _OscButton extends StatelessWidget {
       return FilledButton.icon(
         onPressed: onPressed,
         icon: Icon(icon, size: 18),
-        label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+        label: Text(label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
         style: FilledButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
@@ -1274,8 +1323,9 @@ class _OscButton extends StatelessWidget {
     return OutlinedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, size: 16, color: color),
-      label: Text(label, style: TextStyle(fontSize: 12, color: color,
-          fontWeight: FontWeight.w600)),
+      label: Text(label,
+          style: TextStyle(
+              fontSize: 12, color: color, fontWeight: FontWeight.w600)),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, 38),
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1321,11 +1371,17 @@ class _ScaleControl extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(label, style: TextStyle(fontSize: 9, color: color.withValues(alpha: 0.6),
-                    fontWeight: FontWeight.w500)),
-                Text(value, style: TextStyle(fontSize: 12, color: color,
-                    fontWeight: FontWeight.w700,
-                    fontFeatures: const [FontFeature.tabularFigures()])),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 9,
+                        color: color.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w500)),
+                Text(value,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: color,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()])),
               ],
             ),
           ),
@@ -1373,7 +1429,8 @@ class _ChannelToggle extends StatelessWidget {
           color: enabled ? color.withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: enabled ? color.withValues(alpha: 0.5) : AppColors.cardBorder,
+            color:
+                enabled ? color.withValues(alpha: 0.5) : AppColors.cardBorder,
           ),
         ),
         child: Text(
@@ -1399,9 +1456,15 @@ class _TriggerModeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SegmentedButton<TriggerMode>(
       segments: const [
-        ButtonSegment(value: TriggerMode.auto, label: Text('Авто', style: TextStyle(fontSize: 11))),
-        ButtonSegment(value: TriggerMode.normal, label: Text('Норм', style: TextStyle(fontSize: 11))),
-        ButtonSegment(value: TriggerMode.single, label: Text('Одн.', style: TextStyle(fontSize: 11))),
+        ButtonSegment(
+            value: TriggerMode.auto,
+            label: Text('Авто', style: TextStyle(fontSize: 11))),
+        ButtonSegment(
+            value: TriggerMode.normal,
+            label: Text('Норм', style: TextStyle(fontSize: 11))),
+        ButtonSegment(
+            value: TriggerMode.single,
+            label: Text('Одн.', style: TextStyle(fontSize: 11))),
       ],
       selected: {mode},
       onSelectionChanged: (s) => onChanged(s.first),
@@ -1419,7 +1482,8 @@ class _OscChip extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _OscChip({required this.label, required this.color, required this.onTap});
+  const _OscChip(
+      {required this.label, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1433,8 +1497,9 @@ class _OscChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
-        child: Text(label, style: TextStyle(
-          fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600, color: color)),
       ),
     );
   }

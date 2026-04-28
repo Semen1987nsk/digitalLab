@@ -178,8 +178,7 @@ class VoltageCalibration {
   }
 
   @override
-  String toString() =>
-      'VoltageCalibration(gain=${gain.toStringAsFixed(6)}, '
+  String toString() => 'VoltageCalibration(gain=${gain.toStringAsFixed(6)}, '
       'offset=${offset.toStringAsFixed(6)}, level=$level)';
 }
 

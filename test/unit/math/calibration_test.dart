@@ -72,10 +72,10 @@ void main() {
         offset: offset,
         level: CalibrationLevel.user,
         calibratedAt: DateTime.now(),
-        zeroPoint: const CalibrationPoint(
-            rawValue: rawLo, referenceValue: refLo),
-        referencePoint: const CalibrationPoint(
-            rawValue: rawHi, referenceValue: refHi),
+        zeroPoint:
+            const CalibrationPoint(rawValue: rawLo, referenceValue: refLo),
+        referencePoint:
+            const CalibrationPoint(rawValue: rawHi, referenceValue: refHi),
       );
 
       // Verify: applying to raw zero point should give ref zero
@@ -109,12 +109,14 @@ void main() {
     });
 
     test('levelName returns Russian names', () {
-      expect(const VoltageCalibration(level: CalibrationLevel.factory)
-          .levelName, 'Заводская');
-      expect(const VoltageCalibration(level: CalibrationLevel.user)
-          .levelName, 'Пользовательская');
-      expect(const VoltageCalibration(level: CalibrationLevel.session)
-          .levelName, 'Сессионная');
+      expect(
+          const VoltageCalibration(level: CalibrationLevel.factory).levelName,
+          'Заводская');
+      expect(const VoltageCalibration(level: CalibrationLevel.user).levelName,
+          'Пользовательская');
+      expect(
+          const VoltageCalibration(level: CalibrationLevel.session).levelName,
+          'Сессионная');
     });
 
     test('copyWith preserves unmodified fields', () {
@@ -123,8 +125,7 @@ void main() {
         offset: -0.1,
         level: CalibrationLevel.user,
         calibratedAt: DateTime(2026, 1, 15),
-        zeroPoint: const CalibrationPoint(
-            rawValue: 0.1, referenceValue: 0.0),
+        zeroPoint: const CalibrationPoint(rawValue: 0.1, referenceValue: 0.0),
       );
 
       final modified = original.copyWith(gain: 2.0);
@@ -138,8 +139,7 @@ void main() {
       const original = VoltageCalibration(
         gain: 1.0,
         offset: 0.0,
-        zeroPoint: CalibrationPoint(
-            rawValue: 0.5, referenceValue: 0.0),
+        zeroPoint: CalibrationPoint(rawValue: 0.5, referenceValue: 0.0),
       );
 
       final cleared = original.copyWith(clearZeroPoint: true);
@@ -178,10 +178,9 @@ void main() {
         offset: -0.012,
         level: CalibrationLevel.user,
         calibratedAt: DateTime(2026, 1, 15, 14, 30),
-        zeroPoint: const CalibrationPoint(
-            rawValue: 0.012, referenceValue: 0.0),
-        referencePoint: const CalibrationPoint(
-            rawValue: 5.036, referenceValue: 5.0),
+        zeroPoint: const CalibrationPoint(rawValue: 0.012, referenceValue: 0.0),
+        referencePoint:
+            const CalibrationPoint(rawValue: 5.036, referenceValue: 5.0),
       );
 
       final json = original.toJsonString();
@@ -194,8 +193,8 @@ void main() {
       expect(restored.zeroPoint?.rawValue, original.zeroPoint?.rawValue);
       expect(restored.zeroPoint?.referenceValue,
           original.zeroPoint?.referenceValue);
-      expect(restored.referencePoint?.rawValue,
-          original.referencePoint?.rawValue);
+      expect(
+          restored.referencePoint?.rawValue, original.referencePoint?.rawValue);
       expect(restored.referencePoint?.referenceValue,
           original.referencePoint?.referenceValue);
     });

@@ -217,9 +217,9 @@ class PortConnectionManager {
       r'HKLM\SYSTEM\CurrentControlSet\Enum\FTDIBUS',
     ];
     final futures = regPaths.map((regPath) => Process.run(
-      'reg',
-      ['query', regPath, '/s', '/v', 'PortName'],
-    ));
+          'reg',
+          ['query', regPath, '/s', '/v', 'PortName'],
+        ));
     final regResults = await Future.wait(futures);
 
     for (final result in regResults) {
@@ -249,12 +249,10 @@ class PortConnectionManager {
             final pidMatch =
                 RegExp(r'PID_([0-9A-Fa-f]{4})').firstMatch(lastKeyPath);
 
-            final vid = vidMatch != null
-                ? int.parse(vidMatch.group(1)!, radix: 16)
-                : 0;
-            final pid = pidMatch != null
-                ? int.parse(pidMatch.group(1)!, radix: 16)
-                : 0;
+            final vid =
+                vidMatch != null ? int.parse(vidMatch.group(1)!, radix: 16) : 0;
+            final pid =
+                pidMatch != null ? int.parse(pidMatch.group(1)!, radix: 16) : 0;
 
             if (vid != 0) {
               usbMappings[portName] = (vid, pid);
@@ -361,7 +359,9 @@ class PortConnectionManager {
             if (ok) {
               return (true, p.address, err);
             } else {
-              try { p.dispose(); } catch (_) {}
+              try {
+                p.dispose();
+              } catch (_) {}
               return (false, 0, err);
             }
           }).timeout(const Duration(seconds: 6));
@@ -389,15 +389,15 @@ class PortConnectionManager {
 
         // errno=31 (GEN_FAILURE) and 121 (SEM_TIMEOUT): bail out immediately.
         if (errno == 31 || errno == 121) {
-          _log('  ✗ open failed (errno=$errno) — driver not ready, skip retries');
+          _log(
+              '  ✗ open failed (errno=$errno) — driver not ready, skip retries');
           return ConnectionResult.fail(_humanError(portName, errno));
         }
 
         // Should we retry?
         final shouldRetry =
-            (errno == 0 || errno == -1 ||
-             errno == 5 || errno == 32) &&
-            attempt < maxAttempts;
+            (errno == 0 || errno == -1 || errno == 5 || errno == 32) &&
+                attempt < maxAttempts;
 
         if (!shouldRetry) {
           _log('  ✗ open failed (errno=$errno, attempt $attempt/$maxAttempts)');
@@ -425,13 +425,16 @@ class PortConnectionManager {
         // Port now owns the native config via _config field.
         // Null the local ref to prevent double-free in finally block.
         portConfig = null;
-        _log('  конфигурация: ${config.baudRate} ${config.dataBits}N${config.stopBits}');
+        _log(
+            '  конфигурация: ${config.baudRate} ${config.dataBits}N${config.stopBits}');
       } catch (e) {
         _log('  ⚠ config error: $e (продолжаем)');
       } finally {
         // Dispose ONLY if port did NOT take ownership (assignment threw).
         // On success: portConfig is null → no-op.
-        try { portConfig?.dispose(); } catch (_) {}
+        try {
+          portConfig?.dispose();
+        } catch (_) {}
       }
 
       // Arduino DTR stabilization: после open CDC ACM делает DTR toggle →
@@ -473,7 +476,8 @@ class PortConnectionManager {
     Process? process;
     try {
       process = await Process.start(
-        'mode', [portName],
+        'mode',
+        [portName],
         runInShell: true,
       );
 
@@ -485,11 +489,15 @@ class PortConnectionManager {
     } on TimeoutException {
       // Driver is stuck — kill the probe process
       _log('  ⚠ mode $portName: timeout 3с (драйвер не отвечает)');
-      try { process?.kill(); } catch (_) {}
+      try {
+        process?.kill();
+      } catch (_) {}
       return false;
     } catch (e) {
       _log('  ⚠ mode $portName: $e');
-      try { process?.kill(); } catch (_) {}
+      try {
+        process?.kill();
+      } catch (_) {}
       return false;
     }
   }
@@ -519,27 +527,23 @@ class PortConnectionManager {
 
   /// Человекочитаемое сообщение об ошибке для учителей.
   String _humanError(String portName, int errno) => switch (errno) {
-        5 || 13 =>
+        5 ||
+        13 =>
           'Не удалось открыть $portName: порт используется другой программой. '
-          'Закройте Arduino IDE или монитор порта и попробуйте снова.',
+              'Закройте Arduino IDE или монитор порта и попробуйте снова.',
         2 =>
           'Связь с $portName не обнаружена. Проверьте USB-подключение датчика.',
-        16 =>
-          'Порт $portName сейчас занят другой программой. '
-          'Закройте её и повторите подключение.',
-        121 =>
-          'Подключение к $portName временно нестабильно. '
-          'Переподключите USB-кабель датчика и повторите попытку.',
+        16 => 'Порт $portName сейчас занят другой программой. '
+            'Закройте её и повторите подключение.',
+        121 => 'Подключение к $portName временно нестабильно. '
+            'Переподключите USB-кабель датчика и повторите попытку.',
         31 =>
           'Устройство $portName временно не готово (инициализация драйвера). '
-          'Повторите через несколько секунд.',
-        0 =>
-          'Порт $portName временно недоступен. '
-          'Приложение может восстановить соединение автоматически.',
-        -999 =>
-          'Слишком долгий ответ от $portName. '
-          'Проверьте подключение датчика и попробуйте снова.',
-        _ =>
-          'Не удалось подключиться к $portName (код $errno).',
+              'Повторите через несколько секунд.',
+        0 => 'Порт $portName временно недоступен. '
+            'Приложение может восстановить соединение автоматически.',
+        -999 => 'Слишком долгий ответ от $portName. '
+            'Проверьте подключение датчика и попробуйте снова.',
+        _ => 'Не удалось подключиться к $portName (код $errno).',
       };
 }

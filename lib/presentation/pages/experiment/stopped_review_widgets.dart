@@ -81,7 +81,8 @@ class StoppedReviewPanel extends StatelessWidget {
               ),
               ReviewToolButton(
                 icon: Icons.select_all,
-                label: isSelectionMode ? 'Отменить выделение' : 'Выделить участок',
+                label:
+                    isSelectionMode ? 'Отменить выделение' : 'Выделить участок',
                 onTap: onToggleSelectionMode,
                 accent: isSelectionMode,
               ),
@@ -157,4 +158,3 @@ class ReviewToolButton extends StatelessWidget {
     );
   }
 }
-

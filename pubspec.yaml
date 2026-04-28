@@ -31,10 +31,13 @@ dependencies:
   pdf: ^3.10.0
   printing: ^5.12.0
   csv: ^5.1.0
-  
-  # Protobuf
-  protobuf: ^3.1.0
-  
+
+  # Typography & meta
+  package_info_plus: ^4.2.0
+
+  # SVG для кастомных иконок физических величин
+  flutter_svg: ^2.0.10+1
+
   # Utils
   equatable: ^2.0.5
   intl: ^0.18.0
@@ -52,7 +55,22 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
+
   assets:
     - assets/
     - assets/lab_works/
+    - assets/icons/sensors/
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800

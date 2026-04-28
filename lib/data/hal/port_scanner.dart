@@ -14,26 +14,26 @@ export 'port_types.dart';
 class PortScanner {
   /// Callback для логирования
   final void Function(String message)? onLog;
-  
+
   PortScanner({this.onLog});
-  
+
   void _log(String message) {
     onLog?.call(message);
     debugPrint('PortScanner: $message');
   }
-  
+
   /// Очищает строку от невалидных UTF-8 символов (проблема кодировки Windows)
   String _sanitizeString(String input) {
     if (input.isEmpty) return input;
-    
+
     // Проверяем на типичные признаки неправильной кодировки
     // CP1251 "Последовательный порт" читается как "Ïîñëåäîâàòåëüíûé ïîðò"
     // Символы Ï, î, ñ и т.д. - это 0xCF, 0xEE, 0xF1 в UTF-8
-    
-    // Если есть символы из диапазона кириллицы CP1251, 
+
+    // Если есть символы из диапазона кириллицы CP1251,
     // но они не образуют валидную UTF-8 последовательность
     bool hasEncodingIssue = false;
-    
+
     for (int i = 0; i < input.length; i++) {
       final c = input.codeUnitAt(i);
       // Эти символы часто появляются при неправильной кодировке
@@ -53,15 +53,15 @@ class PortScanner {
         break;
       }
     }
-    
+
     if (hasEncodingIssue) {
       return ''; // Не показываем мусор
     }
-    
+
     // Удаляем непечатаемые символы
     return input.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '').trim();
   }
-  
+
   /// Сканирует все порты и возвращает полную информацию.
   ///
   /// ⚡ v2.0: Делегирует перечисление портов в
@@ -85,7 +85,8 @@ class PortScanner {
     try {
       // ── Step 1: Enumerate ports via shared async registry scanner ──
       final rawPorts = await PortConnectionManager.enumeratePortsAsync(
-        skipLegacyPorts: false, // PortScanner shows ALL ports including COM1/COM2
+        skipLegacyPorts:
+            false, // PortScanner shows ALL ports including COM1/COM2
       ).timeout(const Duration(seconds: 8));
 
       // ── Step 2: Probe availability in background Isolate (FFI) ──
@@ -181,7 +182,9 @@ class PortScanner {
         final opened = probePort.openRead();
         if (opened) {
           results[name] = (PortAvailability.available.index, null);
-          try { probePort.close(); } catch (_) {}
+          try {
+            probePort.close();
+          } catch (_) {}
         } else {
           final code = SerialPort.lastError?.errorCode ?? -1;
           if (code == 5 || code == 13) {
@@ -192,7 +195,9 @@ class PortScanner {
             results[name] = (PortAvailability.error.index, null);
           }
         }
-        try { probePort.dispose(); } catch (_) {}
+        try {
+          probePort.dispose();
+        } catch (_) {}
       } catch (e) {
         results[name] = (PortAvailability.error.index, e.toString());
       }
@@ -200,12 +205,13 @@ class PortScanner {
 
     return results;
   }
-  
+
   /// Определяет тип порта по его характеристикам
-  PortType _detectPortType(String name, String description, String manufacturer, int? vendorId) {
+  PortType _detectPortType(
+      String name, String description, String manufacturer, int? vendorId) {
     final descLower = description.toLowerCase();
     final mfrLower = manufacturer.toLowerCase();
-    
+
     // FTDI (VID: 0x0403)
     if (vendorId == 0x0403 ||
         descLower.contains('ftdi') ||
@@ -213,7 +219,7 @@ class PortScanner {
         mfrLower.contains('ftdi')) {
       return PortType.ftdi;
     }
-    
+
     // Arduino UNO/Mega (VID: 0x2341 — Arduino LLC)
     // Также CH340, CP210x (клоны)
     if (vendorId == 0x2341 ||
@@ -225,39 +231,39 @@ class PortScanner {
         mfrLower.contains('silicon labs')) {
       return PortType.arduino;
     }
-    
+
     // CDC ACM / USB Serial (может быть Arduino UNO через usbser.sys)
     // Только если VID указывает на Arduino-совместимое устройство
     if (vendorId == 0x2341 || vendorId == 0x1A86 || vendorId == 0x10C4) {
       return PortType.arduino;
     }
-    
+
     // FTDI по VID (если описание не помогло)
     if (vendorId == 0x0403) {
       return PortType.ftdi;
     }
-    
+
     // Неизвестный USB — НЕ считаем автоматически датчиком
     if (descLower.contains('usb serial') ||
         descLower.contains('usb-serial') ||
         (descLower.isEmpty && vendorId != null && vendorId > 0)) {
       return PortType.unknown;
     }
-    
+
     // Bluetooth
     if (descLower.contains('bluetooth') ||
         descLower.contains('bth') ||
         descLower.contains('rfcomm')) {
       return PortType.bluetooth;
     }
-    
+
     // USB Serial - НЕ считаем автоматически датчиком!
     // SUNIX и другие PCI-E карты тоже показываются как USB Serial
     // Только FTDI VID 0x0403 гарантированно наш датчик
     // if (descLower.contains('usb') && descLower.contains('serial')) {
     //   return PortType.ftdi; // УДАЛЕНО - это неправильно
     // }
-    
+
     // Встроенные порты (COM1, COM2 часто)
     if (name == 'COM1' || name == 'COM2') {
       // Но проверяем - может быть USB
@@ -266,16 +272,15 @@ class PortScanner {
       }
       return PortType.builtin;
     }
-    
+
     // Виртуальные порты
-    if (descLower.contains('virtual') ||
-        descLower.contains('emulated')) {
+    if (descLower.contains('virtual') || descLower.contains('emulated')) {
       return PortType.virtual;
     }
-    
+
     return PortType.unknown;
   }
-  
+
   /// Находит лучший порт для датчика (автовыбор)
   /// Приоритет: Arduino мультидатчик > FTDI датчик расстояния
   PortInfo? findBestSensorPort(List<PortInfo> ports) {
@@ -286,7 +291,7 @@ class PortScanner {
         return port;
       }
     }
-    
+
     // 2. Ищем FTDI датчик расстояния
     for (final port in ports) {
       if (port.isFtdiDistanceSensor && port.canConnect) {
@@ -294,15 +299,16 @@ class PortScanner {
         return port;
       }
     }
-    
+
     // 3. Ищем любой наш порт (даже недоступный - для диагностики)
     for (final port in ports) {
       if (port.isLikelyOurSensor) {
-        _log('Датчик найден но недоступен: ${port.name} - ${port.availabilityDescription}');
+        _log(
+            'Датчик найден но недоступен: ${port.name} - ${port.availabilityDescription}');
         return port;
       }
     }
-    
+
     // Ничего не найдено
     _log('Датчик не найден. Подключите мультидатчик к USB.');
     return null;

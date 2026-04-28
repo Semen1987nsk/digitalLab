@@ -65,7 +65,8 @@ class BleScanController extends StateNotifier<BleScanState> {
   }
 
   /// Запустить сканирование BLE-устройств
-  Future<void> startScan({Duration timeout = const Duration(seconds: 10)}) async {
+  Future<void> startScan(
+      {Duration timeout = const Duration(seconds: 10)}) async {
     if (state.isScanning) return;
 
     // Проверяем поддержку BLE
@@ -182,4 +183,5 @@ final bleScanProvider =
 });
 
 /// Выбранное BLE-устройство для подключения
-final selectedBleDeviceProvider = StateProvider<BluetoothDevice?>((ref) => null);
+final selectedBleDeviceProvider =
+    StateProvider<BluetoothDevice?>((ref) => null);

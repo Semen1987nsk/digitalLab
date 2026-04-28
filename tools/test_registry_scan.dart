@@ -55,10 +55,8 @@ void main() {
         if (portMatch == null) continue;
         final portName = portMatch.group(0)!;
 
-        final vidMatch =
-            RegExp(r'VID_([0-9A-Fa-f]{4})').firstMatch(lastKey);
-        final pidMatch =
-            RegExp(r'PID_([0-9A-Fa-f]{4})').firstMatch(lastKey);
+        final vidMatch = RegExp(r'VID_([0-9A-Fa-f]{4})').firstMatch(lastKey);
+        final pidMatch = RegExp(r'PID_([0-9A-Fa-f]{4})').firstMatch(lastKey);
         final vid =
             vidMatch != null ? int.parse(vidMatch.group(1)!, radix: 16) : 0;
         final pid =

@@ -5,7 +5,7 @@ import '../../domain/repositories/hal_interface.dart';
 import '../../core/logging.dart';
 import '../../core/cancellation_token.dart';
 import 'port_connection_manager.dart';
-import 'port_scanner.dart';  // PortType enum
+import 'port_scanner.dart'; // PortType enum
 import 'usb_hal_windows.dart';
 import 'data_isolate.dart';
 
@@ -312,7 +312,8 @@ class SensorHub implements HALInterface {
         // Device already disconnected/error and port is gone → remove now.
         // No debounce needed — the HAL already confirmed disconnect.
         if (dev.status != ConnectionStatus.connected) {
-          debugPrint('SensorHub: порт ${dev.id} отсутствует (уже отключён) → remove');
+          debugPrint(
+              'SensorHub: порт ${dev.id} отсутствует (уже отключён) → remove');
           await removeDevice(dev.id);
           _missingPortCounters.remove(dev.id);
           continue;
@@ -585,10 +586,14 @@ class SensorHub implements HALInterface {
       if (allDevicesDead) {
         debugPrint('SensorHub: 🔄 Все устройства мертвы — пересканирование');
         for (final sub in _dataSubs.values) {
-          try { await sub.cancel(); } catch (_) {}
+          try {
+            await sub.cancel();
+          } catch (_) {}
         }
         for (final sub in _statusSubs.values) {
-          try { await sub.cancel(); } catch (_) {}
+          try {
+            await sub.cancel();
+          } catch (_) {}
         }
         _dataSubs.clear();
         _statusSubs.clear();
@@ -659,9 +664,8 @@ class SensorHub implements HALInterface {
       _connectInProgress = false;
     }
 
-    final status = anyConnected
-        ? ConnectionStatus.connected
-        : ConnectionStatus.error;
+    final status =
+        anyConnected ? ConnectionStatus.connected : ConnectionStatus.error;
     _statusController.add(status);
 
     debugPrint('SensorHub: подключено $connectedCount/${_devices.length}');
@@ -733,10 +737,14 @@ class SensorHub implements HALInterface {
 
     // Cancel all subscriptions (prevents stale callbacks from dead HALs)
     for (final sub in _dataSubs.values) {
-      try { await sub.cancel(); } catch (_) {}
+      try {
+        await sub.cancel();
+      } catch (_) {}
     }
     for (final sub in _statusSubs.values) {
-      try { await sub.cancel(); } catch (_) {}
+      try {
+        await sub.cancel();
+      } catch (_) {}
     }
     _dataSubs.clear();
     _statusSubs.clear();

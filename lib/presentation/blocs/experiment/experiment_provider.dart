@@ -64,13 +64,15 @@ final halProvider = Provider<HALInterface>((ref) {
         hal = _createUsbHal(selectedPort);
       } else {
         // USB OTG на мобилке: пока не реализовано, fallback → симуляция
-        debugPrint('HAL: USB не реализован на ${Platform.operatingSystem}, fallback → Mock');
+        debugPrint(
+            'HAL: USB не реализован на ${Platform.operatingSystem}, fallback → Mock');
         hal = MockHAL();
       }
     case HalMode.ble:
       // BLE не поддерживается на Windows desktop
       if (Platform.isWindows || Platform.isLinux) {
-        debugPrint('HAL: BLE не поддерживается на ${Platform.operatingSystem}, fallback → USB');
+        debugPrint(
+            'HAL: BLE не поддерживается на ${Platform.operatingSystem}, fallback → USB');
         // Fallback to USB instead of crashing
         hal = SensorHub(autoDetect: true);
         break;
@@ -182,9 +184,8 @@ class SensorConnectionState {
   }) =>
       SensorConnectionState(
         status: status ?? this.status,
-        errorMessage: clearErrorMessage
-            ? null
-            : (errorMessage ?? this.errorMessage),
+        errorMessage:
+            clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
         deviceInfo: deviceInfo ?? this.deviceInfo,
         deviceStatuses: deviceStatuses ?? this.deviceStatuses,
         isMultiDevice: isMultiDevice ?? this.isMultiDevice,
@@ -211,7 +212,8 @@ class SensorConnectionController extends StateNotifier<SensorConnectionState> {
         status: status,
         deviceInfo: _hal.deviceInfo,
         deviceStatuses: _buildDeviceStatuses(),
-        isRecovering: _hal is SensorHub ? (_hal as SensorHub).isRecovering : false,
+        isRecovering:
+            _hal is SensorHub ? (_hal as SensorHub).isRecovering : false,
       );
     });
 
@@ -225,7 +227,8 @@ class SensorConnectionController extends StateNotifier<SensorConnectionState> {
             final newStatuses = _buildDeviceStatuses();
             final newDeviceInfo = _hal.deviceInfo;
             // Only rebuild if packet rates or device info actually changed
-            final statusesChanged = _statusesChanged(state.deviceStatuses, newStatuses);
+            final statusesChanged =
+                _statusesChanged(state.deviceStatuses, newStatuses);
             final sensorsChanged = newDeviceInfo?.enabledSensors.length !=
                 state.deviceInfo?.enabledSensors.length;
             if (statusesChanged || sensorsChanged) {
@@ -256,18 +259,21 @@ class SensorConnectionController extends StateNotifier<SensorConnectionState> {
   List<DeviceStatusInfo> _buildDeviceStatuses() {
     if (_hal is! SensorHub) return const [];
     final hub = _hal as SensorHub;
-    return hub.devices.map((d) => DeviceStatusInfo(
-      id: d.id,
-      name: d.name,
-      status: d.status,
-      error: d.lastError,
-      packetsPerSecond: d.packetsPerSecond,
-      totalPackets: d.packetsReceived,
-    )).toList();
+    return hub.devices
+        .map((d) => DeviceStatusInfo(
+              id: d.id,
+              name: d.name,
+              status: d.status,
+              error: d.lastError,
+              packetsPerSecond: d.packetsPerSecond,
+              totalPackets: d.packetsReceived,
+            ))
+        .toList();
   }
 
   /// Checks if device statuses actually changed (avoids unnecessary rebuilds)
-  bool _statusesChanged(List<DeviceStatusInfo> old, List<DeviceStatusInfo> next) {
+  bool _statusesChanged(
+      List<DeviceStatusInfo> old, List<DeviceStatusInfo> next) {
     if (old.length != next.length) return true;
     for (int i = 0; i < old.length; i++) {
       if (old[i].status != next[i].status) return true;
@@ -285,13 +291,15 @@ class SensorConnectionController extends StateNotifier<SensorConnectionState> {
       debugPrint('SensorConnection: подключение уже в процессе');
       return false;
     }
-    state = state.copyWith(status: ConnectionStatus.connecting, clearErrorMessage: true);
+    state = state.copyWith(
+        status: ConnectionStatus.connecting, clearErrorMessage: true);
 
     // Retry loop — school USB ports can be flaky on first attempt
     for (int attempt = 0; attempt <= _maxConnectRetries; attempt++) {
       try {
         if (attempt > 0) {
-          debugPrint('SensorConnection: повтор подключения ($attempt/$_maxConnectRetries)');
+          debugPrint(
+              'SensorConnection: повтор подключения ($attempt/$_maxConnectRetries)');
           await Future.delayed(Duration(milliseconds: 500 * attempt));
           if (!mounted) return false;
         }
@@ -306,8 +314,7 @@ class SensorConnectionController extends StateNotifier<SensorConnectionState> {
 
         // Last attempt failed — get specific error from HAL
         if (attempt == _maxConnectRetries && mounted) {
-          String errorMsg =
-              'Подключение датчика временно недоступно. '
+          String errorMsg = 'Подключение датчика временно недоступно. '
               'Проверьте USB-подключение и попробуйте снова.';
 
           if (_hal is UsbHALWindows) {
@@ -339,12 +346,12 @@ class SensorConnectionController extends StateNotifier<SensorConnectionState> {
           );
         }
       } catch (e) {
-        debugPrint('SensorConnection: ошибка подключения (попытка $attempt): $e');
+        debugPrint(
+            'SensorConnection: ошибка подключения (попытка $attempt): $e');
         if (attempt == _maxConnectRetries && mounted) {
           state = state.copyWith(
             status: ConnectionStatus.error,
-            errorMessage:
-                'Не удалось завершить подключение. '
+            errorMessage: 'Не удалось завершить подключение. '
                 'Попробуйте ещё раз.',
           );
           return false;
@@ -409,6 +416,7 @@ final sensorDataStreamProvider = StreamProvider<SensorPacket>((ref) {
 class ExperimentState {
   final bool isRunning;
   final List<SensorPacket> data;
+
   /// Полное число измерений (data может быть оконным подмножеством во время live).
   final int totalMeasurements;
   final int sampleRateHz;
@@ -468,7 +476,9 @@ class ExperimentState {
         isBufferWarning: isBufferWarning ?? this.isBufferWarning,
         isRecoveredSession: isRecoveredSession ?? this.isRecoveredSession,
         elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
-        dbExperimentId: clearDbExperimentId ? null : (dbExperimentId ?? this.dbExperimentId),
+        dbExperimentId: clearDbExperimentId
+            ? null
+            : (dbExperimentId ?? this.dbExperimentId),
       );
 
   Duration get duration {
@@ -488,7 +498,8 @@ class ExperimentController extends StateNotifier<ExperimentState> {
   bool _shutdownStarted = false;
   bool _isStarting = false;
 
-  ExperimentController(this._hal, [this._autosave]) : super(const ExperimentState());
+  ExperimentController(this._hal, [this._autosave])
+      : super(const ExperimentState());
 
   /// Circular buffer — O(1) add, O(1) eviction on overflow.
   /// Replaces List + removeRange which was O(N) and caused UI jank
@@ -594,9 +605,9 @@ class ExperimentController extends StateNotifier<ExperimentState> {
     // 30 FPS = золотой стандарт для real-time графиков
     // (Vernier LabQuest: 20 FPS, PASCO Capstone: 30 FPS, осциллографы: 60 FPS).
     if (pps > 500) {
-      targetMs = 40;  // ~25 FPS — экстремальная частота (500+ Гц)
+      targetMs = 40; // ~25 FPS — экстремальная частота (500+ Гц)
     } else {
-      targetMs = 33;  // ~30 FPS — норма (все остальные диапазоны)
+      targetMs = 33; // ~30 FPS — норма (все остальные диапазоны)
     }
 
     if (targetMs != _uiIntervalMs && state.isRunning) {
@@ -616,117 +627,119 @@ class ExperimentController extends StateNotifier<ExperimentState> {
     _isStarting = true;
 
     try {
-    // Если эксперимент уже запущен — останавливаем предыдущий чисто
-    if (state.isRunning) {
-      debugPrint('ExperimentController: принудительная остановка предыдущего');
-      _uiTimer?.cancel();
-      _uiTimer = null;
-      await _dataSub?.cancel();
-      _dataSub = null;
-      await _hal.stopMeasurement();
-    }
-
-    debugPrint('ExperimentController: start() вызван');
-    _buffer.clear();
-    _dataVersion = 0;
-    _lastEmittedVersion = -1;
-    _lastAcceptedTimestamp = -1;
-    _uiIntervalMs = 33;
-    _packetsSinceAdaptiveCheck = 0;
-    _lastAdaptiveCheckAt = DateTime.now();
-
-    final now = DateTime.now();
-    state = state.copyWith(
-      isRunning: true,
-      data: const [],
-      totalMeasurements: 0,
-      startTime: now,
-      clearEndTime: true,
-      elapsedSeconds: 0.0,
-      isBufferWarning: false,
-      isRecoveredSession: false,
-    );
-
-    // ── Autosave: создаём сессию в SQLite ───────────────────
-    try {
-      await _autosave?.beginSession(
-        startTime: now,
-        sampleRateHz: state.sampleRateHz,
-      );
-      // Прокидываем ID эксперимента в state — позволяет UI
-      // экспортировать полную историю из БД для длинных экспериментов.
-      final dbId = _autosave?.experimentId;
-      if (dbId != null) {
-        state = state.copyWith(dbExperimentId: dbId);
+      // Если эксперимент уже запущен — останавливаем предыдущий чисто
+      if (state.isRunning) {
+        debugPrint(
+            'ExperimentController: принудительная остановка предыдущего');
+        _uiTimer?.cancel();
+        _uiTimer = null;
+        await _dataSub?.cancel();
+        _dataSub = null;
+        await _hal.stopMeasurement();
       }
-    } catch (e) {
-      debugPrint('Autosave: не удалось создать сессию: $e');
-    }
 
-    _dataSub?.cancel();
-    _uiTimer?.cancel();
+      debugPrint('ExperimentController: start() вызван');
+      _buffer.clear();
+      _dataVersion = 0;
+      _lastEmittedVersion = -1;
+      _lastAcceptedTimestamp = -1;
+      _uiIntervalMs = 33;
+      _packetsSinceAdaptiveCheck = 0;
+      _lastAdaptiveCheckAt = DateTime.now();
 
-    await _hal.setSampleRate(state.sampleRateHz);
+      final now = DateTime.now();
+      state = state.copyWith(
+        isRunning: true,
+        data: const [],
+        totalMeasurements: 0,
+        startTime: now,
+        clearEndTime: true,
+        elapsedSeconds: 0.0,
+        isBufferWarning: false,
+        isRecoveredSession: false,
+      );
 
-    // Подписываемся на поток данных ПЕРЕД startMeasurement()
-    debugPrint('ExperimentController: подписываемся на sensorData...');
-    _dataSub = _hal.sensorData.listen(
-      (packet) {
-        if (state.isRunning) {
-          // 3.4: Отбрасываем пакеты с невалидным временем
-          // (прошивка не инициализирована или повреждённый пакет)
-          if (packet.timestampMs <= 0 || !packet.timeSeconds.isFinite) return;
-
-          // 3.5: Monotonicity check — отбрасываем пакеты с временем
-          // меньше предыдущего (clock rollback, corrupt packet, stale data)
-          if (_lastAcceptedTimestamp >= 0 &&
-              packet.timestampMs < _lastAcceptedTimestamp) {
-            return; // skip non-monotonic
-          }
-          _lastAcceptedTimestamp = packet.timestampMs;
-
-          // CircularSampleBuffer: O(1) add + O(1) eviction on overflow.
-          // No removeRange jank (previously O(N) shift of 450K elements).
-          _buffer.add(packet);
-          _autosave?.addPacket(packet);
-          _packetsSinceAdaptiveCheck++;
-          _dataVersion++;
-          _maybeAdaptUiRate();
-          // Отладка: каждый 50-й пакет (debug only)
-          if (kDebugMode && _buffer.length % 50 == 1) {
-            debugPrint('Experiment RX: буфер=${_buffer.length}/$_maxBufferSize '
-                '(evicted=${_buffer.totalEvicted}) t=${packet.timestampMs}ms');
-          }
+      // ── Autosave: создаём сессию в SQLite ───────────────────
+      try {
+        await _autosave?.beginSession(
+          startTime: now,
+          sampleRateHz: state.sampleRateHz,
+        );
+        // Прокидываем ID эксперимента в state — позволяет UI
+        // экспортировать полную историю из БД для длинных экспериментов.
+        final dbId = _autosave?.experimentId;
+        if (dbId != null) {
+          state = state.copyWith(dbExperimentId: dbId);
         }
-      },
-      onError: (e) {
-        debugPrint('Experiment: Ошибка потока данных: $e');
-      },
-      onDone: () {
-        debugPrint('Experiment: Поток данных закрыт');
-      },
-    );
+      } catch (e) {
+        debugPrint('Autosave: не удалось создать сессию: $e');
+      }
 
-    // Стартуем с ~20 FPS, далее адаптация по реальной нагрузке.
-    _startUiTimer();
+      _dataSub?.cancel();
+      _uiTimer?.cancel();
 
-    // 3.3: Таймаут 5с — если датчик не ответил, UI не зависает
-    try {
-      await _hal.startMeasurement().timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          debugPrint('Сенсор не ответил на startMeasurement за 5с');
-          _uiTimer?.cancel();
-          _dataSub?.cancel();
-          state = state.copyWith(isRunning: false);
+      await _hal.setSampleRate(state.sampleRateHz);
+
+      // Подписываемся на поток данных ПЕРЕД startMeasurement()
+      debugPrint('ExperimentController: подписываемся на sensorData...');
+      _dataSub = _hal.sensorData.listen(
+        (packet) {
+          if (state.isRunning) {
+            // 3.4: Отбрасываем пакеты с невалидным временем
+            // (прошивка не инициализирована или повреждённый пакет)
+            if (packet.timestampMs <= 0 || !packet.timeSeconds.isFinite) return;
+
+            // 3.5: Monotonicity check — отбрасываем пакеты с временем
+            // меньше предыдущего (clock rollback, corrupt packet, stale data)
+            if (_lastAcceptedTimestamp >= 0 &&
+                packet.timestampMs < _lastAcceptedTimestamp) {
+              return; // skip non-monotonic
+            }
+            _lastAcceptedTimestamp = packet.timestampMs;
+
+            // CircularSampleBuffer: O(1) add + O(1) eviction on overflow.
+            // No removeRange jank (previously O(N) shift of 450K elements).
+            _buffer.add(packet);
+            _autosave?.addPacket(packet);
+            _packetsSinceAdaptiveCheck++;
+            _dataVersion++;
+            _maybeAdaptUiRate();
+            // Отладка: каждый 50-й пакет (debug only)
+            if (kDebugMode && _buffer.length % 50 == 1) {
+              debugPrint(
+                  'Experiment RX: буфер=${_buffer.length}/$_maxBufferSize '
+                  '(evicted=${_buffer.totalEvicted}) t=${packet.timestampMs}ms');
+            }
+          }
+        },
+        onError: (e) {
+          debugPrint('Experiment: Ошибка потока данных: $e');
+        },
+        onDone: () {
+          debugPrint('Experiment: Поток данных закрыт');
         },
       );
-    } catch (e) {
-      debugPrint('ExperimentController: ошибка запуска: $e');
-      _uiTimer?.cancel();
-      _dataSub?.cancel();
-      state = state.copyWith(isRunning: false);
-    }
+
+      // Стартуем с ~20 FPS, далее адаптация по реальной нагрузке.
+      _startUiTimer();
+
+      // 3.3: Таймаут 5с — если датчик не ответил, UI не зависает
+      try {
+        await _hal.startMeasurement().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint('Сенсор не ответил на startMeasurement за 5с');
+            _uiTimer?.cancel();
+            _dataSub?.cancel();
+            state = state.copyWith(isRunning: false);
+          },
+        );
+      } catch (e) {
+        debugPrint('ExperimentController: ошибка запуска: $e');
+        _uiTimer?.cancel();
+        _dataSub?.cancel();
+        state = state.copyWith(isRunning: false);
+      }
     } finally {
       _isStarting = false;
     }
@@ -808,10 +821,8 @@ class ExperimentController extends StateNotifier<ExperimentState> {
         session.packets.isNotEmpty ? session.packets.last.timestampMs : -1;
 
     final effectiveEnd = session.effectiveEndTime;
-    final elapsedSeconds = effectiveEnd
-            .difference(session.startTime)
-            .inMicroseconds /
-        1e6;
+    final elapsedSeconds =
+        effectiveEnd.difference(session.startTime).inMicroseconds / 1e6;
 
     state = state.copyWith(
       isRunning: false,

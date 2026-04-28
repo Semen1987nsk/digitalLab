@@ -26,8 +26,9 @@ import '../../widgets/labosfera_app_bar.dart';
 //  Формула: calibrated = raw × gain + offset
 // ═══════════════════════════════════════════════════════════════
 
-/// Цвет напряжения (из SensorType.voltage.color)
-const _kVoltageColor = Color(0xFFFFEB3B);
+/// Цвет напряжения (из SensorType.voltage.color = AppColors.oscChannel1).
+/// Не выносим в SensorType.color напрямую, т. к. dim-вариант — strictly UI-токен.
+const _kVoltageColor = AppColors.oscChannel1;
 const _kVoltageColorDim = Color(0xFFCDBB30);
 
 class CalibrationPage extends ConsumerStatefulWidget {
@@ -50,8 +51,7 @@ class _CalibrationPageState extends ConsumerState<CalibrationPage> {
   Widget build(BuildContext context) {
     final calState = ref.watch(voltageCalibrationProvider);
     final connectionState = ref.watch(sensorConnectionProvider);
-    final isConnected =
-        connectionState.status == ConnectionStatus.connected;
+    final isConnected = connectionState.status == ConnectionStatus.connected;
 
     // Live voltage from sensor stream
     double? rawVoltage;
@@ -138,14 +138,10 @@ class _CalibrationPageState extends ConsumerState<CalibrationPage> {
               }
             },
             onApply: () {
-              ref
-                  .read(voltageCalibrationProvider.notifier)
-                  .applyTwoPoint();
+              ref.read(voltageCalibrationProvider.notifier).applyTwoPoint();
             },
             onCancel: () {
-              ref
-                  .read(voltageCalibrationProvider.notifier)
-                  .cancelWizard();
+              ref.read(voltageCalibrationProvider.notifier).cancelWizard();
             },
           ),
           const SizedBox(height: 16),
@@ -194,9 +190,7 @@ class _CalibrationPageState extends ConsumerState<CalibrationPage> {
               backgroundColor: AppColors.error,
             ),
             onPressed: () {
-              ref
-                  .read(voltageCalibrationProvider.notifier)
-                  .resetToFactory();
+              ref.read(voltageCalibrationProvider.notifier).resetToFactory();
               Navigator.pop(ctx);
             },
             child: const Text('Сбросить'),
@@ -751,8 +745,7 @@ class _TwoPointCard extends StatelessWidget {
         _WizardStep(
           stepNumber: 1,
           title: 'Нулевая точка',
-          description:
-              'Замкните щупы вольтметра или подключите к точке с 0 В.',
+          description: 'Замкните щупы вольтметра или подключите к точке с 0 В.',
           isActive: calState.wizardStep == TwoPointWizardStep.setZero,
           isCompleted:
               calState.wizardStep.index > TwoPointWizardStep.setZero.index,
@@ -769,11 +762,9 @@ class _TwoPointCard extends StatelessWidget {
         _WizardStep(
           stepNumber: 2,
           title: 'Опорная точка',
-          description:
-              'Подайте известное напряжение (батарея, блок питания).',
+          description: 'Подайте известное напряжение (батарея, блок питания).',
           isActive: calState.wizardStep == TwoPointWizardStep.setReference,
-          isCompleted:
-              calState.wizardStep == TwoPointWizardStep.done,
+          isCompleted: calState.wizardStep == TwoPointWizardStep.done,
           capturedValue: calState.pendingReferencePoint?.rawValue,
           rawVoltage: rawVoltage,
           onCapture: calState.wizardStep == TwoPointWizardStep.setReference &&
@@ -816,8 +807,8 @@ class _TwoPointCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.accent.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppColors.accent.withValues(alpha: 0.25)),
+              border:
+                  Border.all(color: AppColors.accent.withValues(alpha: 0.25)),
             ),
             child: Row(
               children: [
@@ -877,8 +868,7 @@ class _TwoPointCard extends StatelessWidget {
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
-                FilteringTextInputFormatter.allow(
-                    RegExp(r'[0-9\.\-]')),
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9\.\-]')),
               ],
               style: const TextStyle(
                 fontSize: 16,
@@ -898,13 +888,13 @@ class _TwoPointCard extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                      color: _kVoltageColor.withValues(alpha: 0.3)),
+                  borderSide:
+                      BorderSide(color: _kVoltageColor.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                      color: _kVoltageColor.withValues(alpha: 0.2)),
+                  borderSide:
+                      BorderSide(color: _kVoltageColor.withValues(alpha: 0.2)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),

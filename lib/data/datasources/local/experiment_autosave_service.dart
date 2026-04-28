@@ -98,7 +98,8 @@ class ExperimentAutosaveService {
   }) async {
     // Если предыдущая сессия не закрыта — завершаем
     if (_experimentId != null) {
-      debugPrint('Autosave: принудительное завершение предыдущей сессии #$_experimentId');
+      debugPrint(
+          'Autosave: принудительное завершение предыдущей сессии #$_experimentId');
       await endSession();
     }
 
@@ -157,23 +158,25 @@ class ExperimentAutosaveService {
     final toFlush = List<SensorPacket>.of(_pendingPackets);
     _pendingPackets.clear();
 
-    final rows = toFlush.map((p) => MeasurementsCompanion.insert(
-          experimentId: expId,
-          timestampMs: p.timestampMs,
-          voltageV: Value(p.voltageV),
-          currentA: Value(p.currentA),
-          pressurePa: Value(p.pressurePa),
-          temperatureC: Value(p.temperatureC),
-          accelX: Value(p.accelX),
-          accelY: Value(p.accelY),
-          accelZ: Value(p.accelZ),
-          magneticFieldMt: Value(p.magneticFieldMt),
-          humidityPct: Value(p.humidityPct),
-          distanceMm: Value(p.distanceMm),
-          forceN: Value(p.forceN),
-          luxLx: Value(p.luxLx),
-          radiationCpm: Value(p.radiationCpm),
-        )).toList();
+    final rows = toFlush
+        .map((p) => MeasurementsCompanion.insert(
+              experimentId: expId,
+              timestampMs: p.timestampMs,
+              voltageV: Value(p.voltageV),
+              currentA: Value(p.currentA),
+              pressurePa: Value(p.pressurePa),
+              temperatureC: Value(p.temperatureC),
+              accelX: Value(p.accelX),
+              accelY: Value(p.accelY),
+              accelZ: Value(p.accelZ),
+              magneticFieldMt: Value(p.magneticFieldMt),
+              humidityPct: Value(p.humidityPct),
+              distanceMm: Value(p.distanceMm),
+              forceN: Value(p.forceN),
+              luxLx: Value(p.luxLx),
+              radiationCpm: Value(p.radiationCpm),
+            ))
+        .toList();
 
     try {
       await _db.insertMeasurements(expId, rows);
@@ -244,7 +247,7 @@ class ExperimentAutosaveService {
     }
 
     debugPrint('Autosave: сессия #$expId завершена '
-        '(всего $_flushedCount измерений${dataLost ? ', ЕСТЬ ПОТЕРИ' : ''})');  
+        '(всего $_flushedCount измерений${dataLost ? ', ЕСТЬ ПОТЕРИ' : ''})');
 
     _experimentId = null;
     _pendingPackets.clear();
@@ -274,8 +277,7 @@ class ExperimentAutosaveService {
     final lastInterrupted = await _db.latestInterruptedExperiment();
     if (lastInterrupted == null) return null;
 
-    final totalCount =
-        await _db.measurementCountFor(lastInterrupted.id);
+    final totalCount = await _db.measurementCountFor(lastInterrupted.id);
     if (totalCount == 0) return null;
 
     const pageSize = 5000;

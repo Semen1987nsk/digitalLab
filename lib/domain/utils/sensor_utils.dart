@@ -25,21 +25,14 @@ class SensorUtils {
         return packet.temperatureC;
       case SensorType.acceleration:
         // Если хотя бы одна ось есть — считаем модуль
-        if (packet.accelX == null && packet.accelY == null && packet.accelZ == null) {
+        if (packet.accelX == null &&
+            packet.accelY == null &&
+            packet.accelZ == null) {
           return null;
         }
         return packet.accelMagnitude;
       case SensorType.magneticField:
         return packet.magneticFieldMt;
-      case SensorType.distance:
-        final mm = packet.distanceMm;
-        return mm != null ? mm / 10.0 : null; // мм → см
-      case SensorType.force:
-        return packet.forceN;
-      case SensorType.lux:
-        return packet.luxLx;
-      case SensorType.radiation:
-        return packet.radiationCpm;
     }
   }
 

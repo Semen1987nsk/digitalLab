@@ -4,6 +4,7 @@ import '../../../data/hal/ble_hal.dart';
 import '../../blocs/ble/ble_scan_provider.dart';
 import '../../blocs/experiment/experiment_provider.dart';
 import '../../themes/app_theme.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/labosfera_app_bar.dart';
 
 // ═══════════════════════════════════════════════════════════════
@@ -56,8 +57,7 @@ class _BleDevicePageState extends ConsumerState<BleDevicePage> {
             IconButton(
               icon: const Icon(Icons.refresh),
               tooltip: 'Повторить сканирование',
-              onPressed: () =>
-                  ref.read(bleScanProvider.notifier).startScan(),
+              onPressed: () => ref.read(bleScanProvider.notifier).startScan(),
             ),
         ],
       ),
@@ -181,46 +181,28 @@ class _BleDevicePageState extends ConsumerState<BleDevicePage> {
             const SizedBox(height: 16),
             const Text(
               'Поиск устройств...',
-              style: TextStyle(
-                  color: AppColors.textSecondary, fontSize: 16),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
             ),
             const SizedBox(height: 8),
             const Text(
               'Убедитесь, что мультидатчик включён',
-              style: TextStyle(
-                  color: AppColors.textHint, fontSize: 13),
+              style: TextStyle(color: AppColors.textHint, fontSize: 13),
             ),
           ],
         ),
       );
     }
 
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.bluetooth_disabled,
-              size: 64, color: AppColors.textSecondary.withValues(alpha: 0.3)),
-          const SizedBox(height: 16),
-          const Text(
-            'Устройства не найдены',
-            style:
-                TextStyle(color: AppColors.textSecondary, fontSize: 16),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () =>
-                ref.read(bleScanProvider.notifier).startScan(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Повторить поиск'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 24, vertical: 12),
-            ),
-          ),
-        ],
+    return EmptyState(
+      illustration: EmptyStateIllustration.sensorWaves,
+      title: 'Устройства не найдены',
+      message:
+          'Убедитесь, что мультидатчик включён и находится в зоне действия '
+          'Bluetooth. Если поиск не помогает, проверьте разрешения приложения.',
+      action: ElevatedButton.icon(
+        onPressed: () => ref.read(bleScanProvider.notifier).startScan(),
+        icon: const Icon(Icons.refresh),
+        label: const Text('Повторить поиск'),
       ),
     );
   }
@@ -376,9 +358,7 @@ class _DeviceCard extends StatelessWidget {
               // Стрелка
               Icon(
                 Icons.chevron_right,
-                color: isPhysicsLab
-                    ? AppColors.primary
-                    : AppColors.textHint,
+                color: isPhysicsLab ? AppColors.primary : AppColors.textHint,
               ),
             ],
           ),

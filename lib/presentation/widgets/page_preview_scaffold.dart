@@ -135,7 +135,8 @@ class _PreviewHero extends StatelessWidget {
               runSpacing: 10,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: AppColors.warning.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
@@ -146,7 +147,8 @@ class _PreviewHero extends StatelessWidget {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.schedule_rounded, size: 16, color: AppColors.warning),
+                      Icon(Icons.schedule_rounded,
+                          size: 16, color: AppColors.warning),
                       SizedBox(width: 8),
                       Text(
                         'Раздел развивается',
@@ -159,7 +161,8 @@ class _PreviewHero extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: accentColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),

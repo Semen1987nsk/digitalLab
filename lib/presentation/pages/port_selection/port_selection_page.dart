@@ -8,9 +8,9 @@ import '../../widgets/labosfera_app_bar.dart';
 class PortSelectionPage extends StatefulWidget {
   /// Callback при успешном выборе порта
   final void Function(String portName)? onPortSelected;
-  
+
   const PortSelectionPage({super.key, this.onPortSelected});
-  
+
   @override
   State<PortSelectionPage> createState() => _PortSelectionPageState();
 }
@@ -23,38 +23,38 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
   bool _showDiagnostics = false;
   String? _selectedPort;
   String _log = '';
-  
+
   @override
   void initState() {
     super.initState();
     _scanPorts();
   }
-  
+
   void _addLog(String message) {
     setState(() {
       _log = '$_log\n$message';
     });
   }
-  
+
   Future<void> _scanPorts() async {
     setState(() {
       _isScanning = true;
       _selectedPort = null; // Сбрасываем выбор
       _log = 'Сканирование портов...\n';
     });
-    
+
     final ports = await _scanner.scanPorts(
       testAvailability: true,
       onProgress: _addLog,
     );
-    
+
     setState(() {
       _ports = ports;
       _isScanning = false;
     });
-    
+
     _addLog('\nНайдено ${ports.length} портов');
-    
+
     // Автоматически выбираем ТОЛЬКО если это наш датчик (FTDI)
     final best = _scanner.findBestSensorPort(ports);
     if (best != null && best.isLikelyOurSensor) {
@@ -64,29 +64,29 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
       _addLog('⚠ Датчик НЕ найден! Подключите USB-датчик.');
     }
   }
-  
+
   Future<void> _connectToPort(PortInfo port) async {
     setState(() {
       _isConnecting = true;
       _log = '$_log\n\n--- Подключение к ${port.name} ---\n';
     });
-    
+
     final manager = PortConnectionManager(
       onLog: _addLog,
     );
-    
+
     final result = await manager.connect(port.name);
-    
+
     if (result.success) {
       _addLog('\n✅ УСПЕШНО подключено!');
       _addLog('Метод: ${result.methodUsed}');
-      
+
       // Закрываем тестовое подключение
       manager.closePort(result.port);
-      
+
       // Вызываем callback
       widget.onPortSelected?.call(port.name);
-      
+
       // Показываем сообщение об успехе
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -99,16 +99,16 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
     } else {
       _addLog('\n❌ ОШИБКА подключения');
       _addLog(result.errorMessage ?? 'Неизвестная ошибка');
-      
+
       // Показываем диалог с ошибкой
       if (mounted) {
         _showErrorDialog(result.errorMessage ?? 'Не удалось подключиться');
       }
     }
-    
+
     setState(() => _isConnecting = false);
   }
-  
+
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -134,10 +134,11 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
-    final selectedPortInfo = _ports.where((p) => p.name == _selectedPort).firstOrNull;
+    final selectedPortInfo =
+        _ports.where((p) => p.name == _selectedPort).firstOrNull;
 
     return Scaffold(
       backgroundColor: context.palette.background,
@@ -174,10 +175,10 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
       ),
     );
   }
-  
+
   /// Проверяет, есть ли среди портов наш датчик (FTDI)
   bool get _hasSensorPort => _ports.any((p) => p.isLikelyOurSensor);
-  
+
   Widget _buildPortSection() {
     return Card(
       child: Padding(
@@ -241,7 +242,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
         ),
       );
     }
-    
+
     if (_ports.isEmpty) {
       return Center(
         child: Column(
@@ -268,7 +269,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
         ),
       );
     }
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -322,7 +323,6 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
               ],
             ),
           ),
-
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -332,7 +332,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
       ],
     );
   }
-  
+
   Widget _buildPortCard(PortInfo port) {
     final isSelected = port.name == _selectedPort;
     final isOurSensor = port.isLikelyOurSensor;
@@ -361,7 +361,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
                 ),
               ),
               const SizedBox(width: 16),
-              
+
               // Информация о порте
               Expanded(
                 child: Column(
@@ -430,9 +430,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
 
               if (isSelected)
                 FilledButton(
-                  onPressed: _isConnecting
-                      ? null
-                      : () => _connectToPort(port),
+                  onPressed: _isConnecting ? null : () => _connectToPort(port),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.accent,
                     padding: const EdgeInsets.symmetric(
@@ -457,11 +455,11 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
       ),
     );
   }
-  
+
   Widget _buildStatusBadge(PortInfo port) {
     Color color;
     String text;
-    
+
     switch (port.availability) {
       case PortAvailability.available:
         color = AppColors.success;
@@ -484,7 +482,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
         text = '???';
         break;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -502,7 +500,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
       ),
     );
   }
-  
+
   IconData _getTypeIcon(PortType type) {
     switch (type) {
       case PortType.ftdi:
@@ -519,7 +517,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
         return Icons.usb;
     }
   }
-  
+
   Color _getTypeColor(PortType type) {
     switch (type) {
       case PortType.ftdi:
@@ -527,11 +525,11 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
       case PortType.arduino:
         return AppColors.primary;
       case PortType.bluetooth:
-        return const Color(0xFF7C6DFF);
+        return AppColors.portBluetooth;
       case PortType.builtin:
         return AppColors.textSecondary;
       case PortType.virtual:
-        return const Color(0xFFA371F7);
+        return AppColors.portVirtual;
       case PortType.unknown:
         return AppColors.warning;
     }
@@ -621,7 +619,8 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
             ),
             _ChecklistRow(
               icon: Icons.sensors,
-              text: 'Выберите порт с пометкой «ДАТЧИК» или подходящий COM-порт.',
+              text:
+                  'Выберите порт с пометкой «ДАТЧИК» или подходящий COM-порт.',
             ),
           ],
         ),
@@ -635,7 +634,8 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           initiallyExpanded: _showDiagnostics,
-          onExpansionChanged: (value) => setState(() => _showDiagnostics = value),
+          onExpansionChanged: (value) =>
+              setState(() => _showDiagnostics = value),
           tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           leading: const Icon(Icons.manage_search, color: AppColors.info),
@@ -657,7 +657,7 @@ class _PortSelectionPageState extends State<PortSelectionPage> {
               constraints: const BoxConstraints(minHeight: 140, maxHeight: 260),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFF0F141A),
+                color: AppColors.diagnosticsSurface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppColors.cardBorder),
               ),
@@ -794,9 +794,8 @@ class _HoverablePortCardState extends State<_HoverablePortCard> {
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
               color: _hover ? hoverBorder : baseBorder,
-              width: (widget.isSelected || widget.isOurSensor || _hover)
-                  ? 1.5
-                  : 1,
+              width:
+                  (widget.isSelected || widget.isOurSensor || _hover) ? 1.5 : 1,
             ),
           ),
           color: widget.isSelected

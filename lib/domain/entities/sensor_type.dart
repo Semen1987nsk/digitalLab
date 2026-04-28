@@ -70,52 +70,6 @@ enum SensorType {
     icon: Icons.waves,
     minRange: 10.0,
     defaultDecimalPlaces: 1,
-  ),
-  distance(
-    id: 'distance',
-    title: 'Расстояние',
-    subtitle: 'Дальномер · HC-SR04',
-    unit: 'см',
-    axisLabel: 'Расстояние, см',
-    color: Color(0xFF00BCD4),
-    icon: Icons.straighten,
-    minRange: 20.0,
-    defaultDecimalPlaces: 1,
-  ),
-  force(
-    id: 'force',
-    title: 'Сила',
-    subtitle: 'Динамометр · HX711',
-    unit: 'Н',
-    axisLabel: 'Сила, Н',
-    color: Color(0xFF4CAF50),
-    icon: Icons.fitness_center,
-    minRange: 5.0,
-    defaultDecimalPlaces: 2,
-  ),
-  lux(
-    id: 'lux',
-    title: 'Освещённость',
-    subtitle: 'Люксметр · BH1750',
-    unit: 'лк',
-    axisLabel: 'Освещённость, лк',
-    color: Color(0xFFFFC107),
-    icon: Icons.light_mode,
-    minRange: 100.0,
-    defaultDecimalPlaces: 0,
-  ),
-
-  /// Модуль «Атом» — подключается при наличии счётчика Гейгера.
-  radiation(
-    id: 'radiation',
-    title: 'Радиация',
-    subtitle: 'Счётчик Гейгера · СБМ-20',
-    unit: 'имп/мин',
-    axisLabel: 'Радиация, имп/мин',
-    color: Color(0xFF76FF03),
-    icon: Icons.radar,
-    minRange: 50.0,
-    defaultDecimalPlaces: 0,
   );
 
   const SensorType({

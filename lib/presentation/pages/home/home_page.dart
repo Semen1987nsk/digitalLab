@@ -7,20 +7,18 @@ import '../../../domain/utils/sensor_utils.dart';
 import '../../blocs/calibration/voltage_calibration_provider.dart';
 import '../../blocs/experiment/experiment_provider.dart';
 import '../../themes/app_theme.dart';
+import '../../themes/design_tokens.dart';
 import '../../widgets/device_panel.dart';
+import '../../widgets/hover_lift.dart';
 import '../../widgets/labosfera_app_bar.dart';
+import '../../widgets/pulse_clock.dart';
+import '../../widgets/sensor_icon.dart';
+import '../../widgets/sensor_sparkline.dart';
 import '../experiment/experiment_page.dart';
 import '../oscilloscope/oscilloscope_page.dart';
 import '../ble/ble_device_page.dart';
 import '../debug/usb_debug_page.dart';
 import '../port_selection/port_selection_page.dart';
-
-enum _HomeMenuAction {
-  useUsb,
-  useBle,
-  useMock,
-  openUsbDebug,
-}
 
 // ═══════════════════════════════════════════════════════════════
 //  ГЛАВНЫЙ ЭКРАН — Панель датчиков
@@ -39,50 +37,49 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // select() — слушаем только изменение статуса, а не каждое обновление
-    // state object. Уменьшает количество rebuild на слабых ПК.
     final connectionState = ref.watch(sensorConnectionProvider);
-    final halMode = ref.watch(halModeProvider);
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(context, ref, connectionState, halMode),
+          _buildAppBar(context, ref, connectionState),
           const SliverToBoxAdapter(
             child: DevicePanel(),
           ),
-          SliverToBoxAdapter(
-            child: _HomeOverviewCard(
-              connectionState: connectionState,
-              halMode: halMode,
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(DS.sp4, DS.sp3, DS.sp4, 0),
+              child: _ConnectionModeSelector(),
             ),
           ),
           const SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+              padding: EdgeInsets.fromLTRB(DS.sp4, DS.sp4, DS.sp4, DS.sp1),
               child: _SectionHeader(
                 title: 'Датчики',
-                subtitle: 'Каждый датчик откликается на физическое воздействие — нажмите, чтобы начать эксперимент.',
+                subtitle:
+                    'Каждый датчик откликается на физическое воздействие — '
+                    'нажмите, чтобы начать эксперимент.',
                 accentColor: AppColors.primary,
               ),
             ),
           ),
           const SliverPadding(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
+            padding: EdgeInsets.fromLTRB(DS.sp4, DS.sp2, DS.sp4, DS.sp6),
             sliver: _SensorGrid(),
           ),
           const SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              padding: EdgeInsets.fromLTRB(DS.sp4, 0, DS.sp4, DS.sp2),
               child: _SectionHeader(
                 title: 'Инструменты',
-                subtitle: 'Дополнительные режимы для углублённой работы с сигналом.',
+                subtitle:
+                    'Дополнительные режимы для углублённой работы с сигналом.',
                 accentColor: AppColors.warning,
               ),
             ),
           ),
-
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+            padding: const EdgeInsets.fromLTRB(DS.sp4, 0, DS.sp4, DS.sp8),
             sliver: SliverToBoxAdapter(
               child: _OscilloscopeCard(
                 onTap: () => Navigator.push(
@@ -101,13 +98,11 @@ class HomePage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     SensorConnectionState connectionState,
-    HalMode halMode,
   ) {
     return LabosferaSliverAppBar(
       actions: [
-        // Порт
         IconButton(
-          icon: const Icon(Icons.settings_ethernet, size: 22),
+          icon: const Icon(Icons.settings_ethernet),
           tooltip: 'Выбор COM-порта',
           onPressed: () => Navigator.push(
             context,
@@ -124,203 +119,101 @@ class HomePage extends ConsumerWidget {
         ),
         if (!Platform.isWindows && !Platform.isLinux)
           IconButton(
-            icon: const Icon(Icons.bluetooth_searching, size: 22),
+            icon: const Icon(Icons.bluetooth_searching),
             tooltip: 'Поиск Bluetooth устройств',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const BleDevicePage()),
             ),
           ),
-        PopupMenuButton<_HomeMenuAction>(
-          icon: const Icon(Icons.more_horiz_rounded, size: 22),
-          tooltip: 'Дополнительно',
-          onSelected: (action) {
-            switch (action) {
-              case _HomeMenuAction.useUsb:
-                ref.read(halModeProvider.notifier).state = HalMode.usb;
-              case _HomeMenuAction.useBle:
-                ref.read(halModeProvider.notifier).state = HalMode.ble;
-              case _HomeMenuAction.useMock:
-                ref.read(halModeProvider.notifier).state = HalMode.mock;
-              case _HomeMenuAction.openUsbDebug:
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const UsbDebugPage()),
-                );
-            }
-          },
-          itemBuilder: (_) => [
-            PopupMenuItem<_HomeMenuAction>(
-              enabled: false,
-              child: Text(
-                'Режим подключения',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary.withValues(alpha: 0.9),
-                ),
-              ),
-            ),
-            _homeMenuItem(
-              action: _HomeMenuAction.useUsb,
-              icon: Icons.usb,
-              label: 'USB (COM)',
-              selected: halMode == HalMode.usb,
-            ),
-            if (!Platform.isWindows && !Platform.isLinux)
-              _homeMenuItem(
-                action: _HomeMenuAction.useBle,
-                icon: Icons.bluetooth,
-                label: 'Bluetooth',
-                selected: halMode == HalMode.ble,
-              ),
-            _homeMenuItem(
-              action: _HomeMenuAction.useMock,
-              icon: Icons.developer_mode,
-              label: 'Симуляция',
-              selected: halMode == HalMode.mock,
-            ),
-            const PopupMenuDivider(),
-            _homeMenuItem(
-              action: _HomeMenuAction.openUsbDebug,
-              icon: Icons.bug_report_outlined,
-              label: 'USB отладка',
-              selected: false,
-            ),
-          ],
+        IconButton(
+          icon: const Icon(Icons.bug_report_outlined),
+          tooltip: 'USB-отладка',
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const UsbDebugPage()),
+          ),
         ),
         _ConnectionDot(status: connectionState.status),
-        const SizedBox(width: 12),
+        const SizedBox(width: DS.sp3),
       ],
-    );
-  }
-
-  PopupMenuItem<_HomeMenuAction> _homeMenuItem({
-    required _HomeMenuAction action,
-    required IconData icon,
-    required String label,
-    required bool selected,
-  }) {
-    return PopupMenuItem<_HomeMenuAction>(
-      value: action,
-      child: Row(
-        children: [
-          Icon(icon, color: selected ? AppColors.primary : null, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
 
-class _HomeOverviewCard extends StatelessWidget {
-  final SensorConnectionState connectionState;
-  final HalMode halMode;
+// ═══════════════════════════════════════════════════════════════
+//  ВЫБОР РЕЖИМА ПОДКЛЮЧЕНИЯ — видимый сегментный переключатель
+//  USB / Симуляция (BLE — только на мобильных платформах).
+//
+//  Раньше был спрятан в popup-меню `more_horiz`, что не позволяло
+//  учителю быстро переключиться в симуляцию для демонстрации без
+//  железа. Теперь — на главном экране, в одно нажатие.
+// ═══════════════════════════════════════════════════════════════
 
-  const _HomeOverviewCard({
-    required this.connectionState,
-    required this.halMode,
-  });
+class _ConnectionModeSelector extends ConsumerWidget {
+  const _ConnectionModeSelector();
 
   @override
-  Widget build(BuildContext context) {
-    final (statusText, statusColor, guidance) = switch (connectionState.status) {
-      ConnectionStatus.connected => (
-          'Лаборатория готова',
-          AppColors.success,
-          'Данные поступают. Выберите датчик, чтобы открыть эксперимент или посмотреть живые значения.',
-        ),
-      ConnectionStatus.connecting => (
-          'Подключение выполняется',
-          AppColors.warning,
-          'Подождите завершения подключения. После этого карточки датчиков начнут обновляться автоматически.',
-        ),
-      ConnectionStatus.error => (
-          'Есть проблема с подключением',
-          AppColors.error,
-          'Проверьте кабель, питание датчика и выбранный режим подключения. Затем повторите попытку.',
-        ),
-      ConnectionStatus.disconnected => (
-          'Подключите датчик или включите симуляцию',
-          AppColors.primary,
-          'Для начала работы выберите COM-порт сверху или переключитесь в режим симуляции через меню.',
-        ),
-    };
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(halModeProvider);
+    final hasBle = !Platform.isWindows && !Platform.isLinux;
 
-    final modeLabel = switch (halMode) {
-      HalMode.usb => 'USB (COM)',
-      HalMode.ble => 'Bluetooth',
-      HalMode.mock => 'Симуляция',
-    };
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(Icons.hub_outlined, color: statusColor),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          statusText,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          guidance,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                            height: 1.45,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+    final palette = context.palette;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: DS.sp3, vertical: DS.sp2),
+      decoration: BoxDecoration(
+        color: palette.surface,
+        borderRadius: BorderRadius.circular(DS.rLg),
+        border: Border.all(color: palette.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: DS.sp2),
+            child: Icon(
+              Icons.settings_input_component_outlined,
+              size: 18,
+              color: palette.textSecondary,
+            ),
+          ),
+          const SizedBox(width: DS.sp2),
+          Text(
+            'Режим подключения',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: palette.textSecondary,
+            ),
+          ),
+          const Spacer(),
+          SegmentedButton<HalMode>(
+            segments: [
+              const ButtonSegment(
+                value: HalMode.usb,
+                label: Text('USB'),
+                icon: Icon(Icons.usb, size: 16),
               ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _InfoPill(
-                    icon: Icons.settings_input_component_outlined,
-                    label: modeLabel,
-                    color: AppColors.primary,
-                  ),
-                ],
+              if (hasBle)
+                const ButtonSegment(
+                  value: HalMode.ble,
+                  label: Text('BLE'),
+                  icon: Icon(Icons.bluetooth, size: 16),
+                ),
+              const ButtonSegment(
+                value: HalMode.mock,
+                label: Text('Симуляция'),
+                icon: Icon(Icons.developer_mode, size: 16),
               ),
             ],
+            selected: {mode},
+            onSelectionChanged: (s) =>
+                ref.read(halModeProvider.notifier).state = s.first,
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -372,43 +265,6 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _InfoPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _InfoPill({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -520,6 +376,27 @@ class _SensorCard extends StatefulWidget {
 class _SensorCardState extends State<_SensorCard> {
   bool _hover = false;
 
+  /// Буфер последних значений для sparkline. Маленький — 60 точек.
+  /// Накапливается в State, чтобы переключение между датчиками или
+  /// rebuild не сбрасывали историю.
+  static const int _sparkBufferSize = 60;
+  final List<double> _sparkBuffer = [];
+
+  @override
+  void didUpdateWidget(covariant _SensorCard old) {
+    super.didUpdateWidget(old);
+    final v = widget.liveValue;
+    if (v != null && v.isFinite) {
+      _sparkBuffer.add(v);
+      if (_sparkBuffer.length > _sparkBufferSize) {
+        _sparkBuffer.removeAt(0);
+      }
+    }
+    if (!widget.isHardwareConnected && _sparkBuffer.isNotEmpty) {
+      _sparkBuffer.clear();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sensor = widget.sensor;
@@ -533,138 +410,150 @@ class _SensorCardState extends State<_SensorCard> {
         : sensor.color.withValues(alpha: 0.15);
     final hoverBorder = sensor.color.withValues(alpha: 0.75);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        curve: Curves.easeOutCubic,
-        transform: _hover
-            ? (Matrix4.identity()..translateByDouble(0.0, -2.0, 0.0, 1.0))
-            : Matrix4.identity(),
+    final semanticValue = liveValue == null
+        ? (isHardwareConnected ? 'нет данных' : 'датчик не подключён')
+        : '${SensorUtils.formatValue(liveValue, sensor)} ${sensor.unit}';
+
+    return Semantics(
+      button: true,
+      label:
+          '${sensor.title}, $semanticValue. Нажмите, чтобы открыть эксперимент',
+      child: HoverLift(
+        onHoverChanged: (h) => setState(() => _hover = h),
         child: Card(
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: _hover ? hoverBorder : border,
-          width: (isHardwareConnected || _hover) ? 1.5 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: widget.onTap,
-        splashColor: color.withValues(alpha: 0.1),
-        hoverColor: Colors.transparent,
-        child: Stack(
-          children: [
-            // ── Градиент фона ──
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      color.withValues(
-                          alpha: isHardwareConnected ? 0.12 : 0.06),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: _hover ? hoverBorder : border,
+              width: (isHardwareConnected || _hover) ? 1.5 : 1,
             ),
-
-            // ── Glow-эффект при подключённом датчике ──
-            if (isHardwareConnected)
-              Positioned(
-                top: -20,
-                left: -20,
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: sensor.color.withValues(alpha: 0.15),
-                        blurRadius: 40,
-                        spreadRadius: 10,
+          ),
+          child: InkWell(
+            onTap: widget.onTap,
+            splashColor: color.withValues(alpha: 0.1),
+            hoverColor: Colors.transparent,
+            child: Stack(
+              children: [
+                // ── Градиент фона ──
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          color.withValues(
+                              alpha: isHardwareConnected ? 0.12 : 0.06),
+                          Colors.transparent,
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
 
-            // ── Контент ──
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Иконка + бейджи (верхняя строка)
-                  Row(
+                // ── Glow-эффект при подключённом датчике ──
+                if (isHardwareConnected)
+                  Positioned(
+                    top: -20,
+                    left: -20,
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: sensor.color.withValues(alpha: 0.15),
+                            blurRadius: 40,
+                            spreadRadius: 10,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // ── Контент ──
+                Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Иконка датчика
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: color.withValues(
-                              alpha: isHardwareConnected ? 0.18 : 0.10),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(sensor.icon, color: color, size: 20),
+                      // Иконка + бейджи (верхняя строка)
+                      Row(
+                        children: [
+                          // Иконка датчика — кастомный SVG (символ физической
+                          // величины в стилизованной рамке).
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: color.withValues(
+                                  alpha: isHardwareConnected ? 0.18 : 0.10),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.all(6),
+                            child: SensorIcon(sensor: sensor, color: color),
+                          ),
+                          const Spacer(),
+                          if (isDeviceConnected)
+                            _ConnectionBadge(isConnected: isHardwareConnected),
+                        ],
                       ),
+
                       const Spacer(),
-                      if (isDeviceConnected)
-                        _ConnectionBadge(isConnected: isHardwareConnected),
+
+                      // Живое значение (когда подключён и данные идут)
+                      if (liveValue != null) ...[
+                        _LiveValueChip(
+                          value: liveValue,
+                          sensor: sensor,
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // Mini-sparkline (PASCO SPARKvue pattern): живой trend
+                      // последних 60 точек. Хорошо читается на проекторе.
+                      if (_sparkBuffer.length >= 2) ...[
+                        SensorSparkline(
+                          values: _sparkBuffer,
+                          color: sensor.color,
+                          height: 22,
+                        ),
+                        const SizedBox(height: 4),
+                      ],
+
+                      // Название датчика
+                      Text(
+                        sensor.title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+
+                      // Подзаголовок
+                      Text(
+                        sensor.subtitle,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
-
-                  const Spacer(),
-
-                  // Живое значение (когда подключён и данные идут)
-                  if (liveValue != null) ...[
-                    _LiveValueChip(
-                      value: liveValue,
-                      sensor: sensor,
-                    ),
-                    const SizedBox(height: 6),
-                  ],
-
-                  // Название датчика
-                  Text(
-                    sensor.title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-
-                  // Подзаголовок
-                  Text(
-                    sensor.subtitle,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
         ),
       ),
     );
   }
-
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -675,105 +564,81 @@ class _SensorCardState extends State<_SensorCard> {
 //  muted grey when sensor not detected.
 // ═══════════════════════════════════════════════════════════════
 
-class _ConnectionBadge extends StatefulWidget {
+class _ConnectionBadge extends StatelessWidget {
   final bool isConnected;
   const _ConnectionBadge({required this.isConnected});
 
   @override
-  State<_ConnectionBadge> createState() => _ConnectionBadgeState();
+  Widget build(BuildContext context) {
+    final color = isConnected ? AppColors.success : AppColors.textHint;
+    final label = isConnected ? 'Подключён' : 'Не подкл.';
+
+    return Semantics(
+      liveRegion: true,
+      label: isConnected ? 'Датчик подключён' : 'Датчик не подключён',
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isConnected ? 0.12 : 0.06),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: color.withValues(alpha: isConnected ? 0.3 : 0.15),
+            width: 0.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Pulse-dot подписан на shared PulseClock — один Ticker на всё
+            // приложение. Раньше каждый Badge заводил свой AnimationController
+            // (12 на сетке датчиков), теперь источник один.
+            isConnected
+                ? PulseClock.instance.listen(
+                    builder: (_, value, __) =>
+                        _PulseDot(color: color, alpha: value),
+                  )
+                : _PulseDot(color: color, alpha: 0.5),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: color.withValues(alpha: 0.9),
+                letterSpacing: -0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _ConnectionBadgeState extends State<_ConnectionBadge>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulseController;
-  late final Animation<double> _pulseAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-    _pulseAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-    if (widget.isConnected) {
-      _pulseController.repeat(reverse: true);
-    }
-  }
-
-  @override
-  void didUpdateWidget(_ConnectionBadge oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.isConnected && !oldWidget.isConnected) {
-      _pulseController.repeat(reverse: true);
-    } else if (!widget.isConnected && oldWidget.isConnected) {
-      _pulseController.stop();
-      _pulseController.value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    super.dispose();
-  }
+class _PulseDot extends StatelessWidget {
+  final Color color;
+  final double alpha;
+  const _PulseDot({required this.color, required this.alpha});
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.isConnected ? AppColors.success : AppColors.textHint;
-    final label = widget.isConnected ? 'Подключён' : 'Не подкл.';
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    final glowing = alpha > 0.5 + 1e-3;
+    return Container(
+      width: 6,
+      height: 6,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: widget.isConnected ? 0.12 : 0.06),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: color.withValues(alpha: widget.isConnected ? 0.3 : 0.15),
-          width: 0.5,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Animated pulse dot
-          AnimatedBuilder(
-            animation: _pulseAnimation,
-            builder: (_, __) => Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withValues(
-                  alpha: widget.isConnected ? _pulseAnimation.value : 0.5,
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: alpha),
+        boxShadow: glowing
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: alpha * 0.4),
+                  blurRadius: 4,
+                  spreadRadius: 1,
                 ),
-                boxShadow: widget.isConnected
-                    ? [
-                        BoxShadow(
-                          color: color.withValues(
-                              alpha: _pulseAnimation.value * 0.4),
-                          blurRadius: 4,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : null,
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: color.withValues(alpha: 0.9),
-              letterSpacing: -0.2,
-            ),
-          ),
-        ],
+              ]
+            : null,
       ),
     );
   }
@@ -801,34 +666,39 @@ class _LiveValueChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final formatted = SensorUtils.formatValue(value, sensor);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: sensor.color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: formatted,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: sensor.color,
-                fontFeatures: const [FontFeature.tabularFigures()],
-                letterSpacing: -0.5,
+    return Semantics(
+      liveRegion: true,
+      label: '$formatted ${sensor.unit}',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: sensor.color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: formatted,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: sensor.color,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                  letterSpacing: -0.5,
+                ),
               ),
-            ),
-            TextSpan(
-              text: ' ${sensor.unit}',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: sensor.color.withValues(alpha: 0.6),
+              TextSpan(
+                text: ' ${sensor.unit}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: sensor.color.withValues(alpha: 0.6),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -851,18 +721,30 @@ class _ConnectionDot extends StatelessWidget {
       ConnectionStatus.connected => AppColors.success,
       ConnectionStatus.error => AppColors.error,
     };
+    final label = switch (status) {
+      ConnectionStatus.disconnected => 'Не подключено',
+      ConnectionStatus.connecting => 'Подключение',
+      ConnectionStatus.connected => 'Подключено',
+      ConnectionStatus.error => 'Ошибка подключения',
+    };
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Container(
-        width: 10,
-        height: 10,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          boxShadow: status == ConnectionStatus.connected
-              ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 6)]
-              : null,
+    return Tooltip(
+      message: label,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: status == ConnectionStatus.connected
+                ? [
+                    BoxShadow(
+                        color: color.withValues(alpha: 0.5), blurRadius: 6)
+                  ]
+                : null,
+          ),
         ),
       ),
     );
@@ -879,73 +761,78 @@ class _OscilloscopeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD29922).withValues(alpha: 0.25)),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.surface,
-                const Color(0xFFD29922).withValues(alpha: 0.04),
+    return Semantics(
+      button: true,
+      label: 'Осциллограф. 2 канала, триггер, автоизмерения',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border:
+                  Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.surface,
+                  AppColors.warning.withValues(alpha: 0.04),
+                ],
+              ),
+            ),
+            child: Row(
+              children: [
+                // Иконка осциллографа
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.monitor_heart_outlined,
+                    color: AppColors.warning,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Текст
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Осциллограф',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '2 канала • Триггер • Автоизмерения',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textHint,
+                  size: 24,
+                ),
               ],
             ),
-          ),
-          child: Row(
-            children: [
-              // Иконка осциллографа
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD29922).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.monitor_heart_outlined,
-                  color: Color(0xFFD29922),
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Текст
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Осциллограф',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '2 канала • Триггер • Автоизмерения',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary.withValues(alpha: 0.8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: AppColors.textHint,
-                size: 24,
-              ),
-            ],
           ),
         ),
       ),

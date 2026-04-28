@@ -23,11 +23,9 @@ import 'data_isolate.dart';
 /// - Thread-safe disconnect handling
 /// - Robust port selection with fallback
 class UsbHALWindows implements HALInterface {
-  final _connectionStatusController = StreamController<ConnectionStatus>.broadcast();
+  final _connectionStatusController =
+      StreamController<ConnectionStatus>.broadcast();
   final _sensorDataController = StreamController<SensorPacket>.broadcast();
-
-  /// Процессор сигнала для фильтрации (distance sensor)
-  final _distanceProcessor = SignalProcessor(sensorType: SensorType.distance);
 
   /// Per-channel signal processors for multisensor (optional filtering)
   // ignore: unused_field
@@ -44,6 +42,7 @@ class UsbHALWindows implements HALInterface {
   IsolateDeviceType? selectedDeviceType;
 
   SerialPort? _port;
+
   /// Timer для polling-чтения из COM-порта (10мс интервал).
   /// Заменяет SerialPortReader (который спавнил фоновый Isolate
   /// с sp_wait → WaitForMultipleObjects → heap corruption при закрытии).
@@ -58,6 +57,7 @@ class UsbHALWindows implements HALInterface {
   /// SensorHub сделает quick rescan через 1.5с.
   Timer? _dataWatchdogTimer;
   DateTime? _lastDataReceivedAt;
+
   /// Arduino мультидатчик: 2с (100 Гц → 200 пропущенных пакетов = серьёзно)
   /// FTDI дальномер: 5с (10 Гц, лазер может тормозить на отражающих поверхностях)
   static const int _watchdogThresholdArduinoMs = 2000;
@@ -147,7 +147,7 @@ class UsbHALWindows implements HALInterface {
   /// НЕ вызываем port.dispose() (sp_free_port):
   /// Timer callback мог уже начать выполнение _pollSerialPort() и
   /// захватить port в локальную переменную до обнуления _port.
-  
+
   /// Safely closes and disposes a SerialPort in a background Isolate
   /// to prevent blocking the Flutter UI thread on Windows.
   static void _closePortSafe(SerialPort? port) {
@@ -199,16 +199,17 @@ class UsbHALWindows implements HALInterface {
 
     debugPrint('USB HAL cleanup v3: завершено');
   }
-  
+
   @override
-  Stream<ConnectionStatus> get connectionStatus => _connectionStatusController.stream;
-  
+  Stream<ConnectionStatus> get connectionStatus =>
+      _connectionStatusController.stream;
+
   @override
   Stream<SensorPacket> get sensorData => _sensorDataController.stream;
-  
+
   @override
   DeviceInfo? get deviceInfo => _deviceInfo;
-  
+
   /// Получить список доступных COM-портов
   static List<String> getAvailablePorts() {
     return SerialPort.availablePorts;
@@ -219,10 +220,10 @@ class UsbHALWindows implements HALInterface {
       'pkts=$_totalPacketsReceived crc_err=$_crcErrors lost=$_lostPackets';
 
   // Known USB Vendor IDs
-  static const int _vidArduino = 0x2341;  // Arduino LLC (UNO, Mega)
-  static const int _vidFtdi    = 0x0403;  // FTDI (FT232R — distance sensor)
-  static const int _vidCH340   = 0x1A86;  // WCH CH340 (Arduino clones)
-  static const int _vidCP210x  = 0x10C4;  // Silicon Labs CP210x (Arduino clones)
+  static const int _vidArduino = 0x2341; // Arduino LLC (UNO, Mega)
+  static const int _vidFtdi = 0x0403; // FTDI (FT232R — distance sensor)
+  static const int _vidCH340 = 0x1A86; // WCH CH340 (Arduino clones)
+  static const int _vidCP210x = 0x10C4; // Silicon Labs CP210x (Arduino clones)
 
   /// Найти лучший порт с проверкой VID/PID.
   ///
@@ -284,7 +285,9 @@ class UsbHALWindows implements HALInterface {
       // Классифицируем по VID
       if (vid == _vidArduino || vid == _vidCH340 || vid == _vidCP210x) {
         type = PortType.arduino;
-        description = vid == _vidArduino ? 'Arduino' : (vid == _vidCH340 ? 'CH340' : 'CP210x');
+        description = vid == _vidArduino
+            ? 'Arduino'
+            : (vid == _vidCH340 ? 'CH340' : 'CP210x');
       } else if (vid == _vidFtdi) {
         type = PortType.ftdi;
         description = 'FTDI';
@@ -328,7 +331,8 @@ class UsbHALWindows implements HALInterface {
     }
 
     if (bestUnknownUsb != null) {
-      debugPrint('USB HAL: ⚠ Неизвестный USB: ${bestUnknownUsb.name} — пробуем как мультидатчик');
+      debugPrint(
+          'USB HAL: ⚠ Неизвестный USB: ${bestUnknownUsb.name} — пробуем как мультидатчик');
       return PortInfo(
         name: bestUnknownUsb.name,
         description: bestUnknownUsb.description,
@@ -470,7 +474,8 @@ class UsbHALWindows implements HALInterface {
         portName = selectedPort!;
         _deviceType = selectedDeviceType!;
         isArduino = _deviceType == IsolateDeviceType.arduinoMultisensor;
-        debugPrint('USB HAL: $portName [${isArduino ? "мультидатчик" : "расстояние"}] (SensorHub)');
+        debugPrint(
+            'USB HAL: $portName [${isArduino ? "мультидатчик" : "расстояние"}] (SensorHub)');
       } else if (selectedPort != null) {
         // selectedPort задан вручную, но тип неизвестен → быстрый VID-probe
         portName = selectedPort!;
@@ -479,7 +484,8 @@ class UsbHALWindows implements HALInterface {
         _deviceType = isArduino
             ? IsolateDeviceType.arduinoMultisensor
             : IsolateDeviceType.ftdiDistance;
-        debugPrint('USB HAL: $portName [${isArduino ? "мультидатчик" : "расстояние"}] (ручной)');
+        debugPrint(
+            'USB HAL: $portName [${isArduino ? "мультидатчик" : "расстояние"}] (ручной)');
       } else {
         // Полный auto-detect (legacy single-device mode)
         final portInfo = await _findBestPortAsync();
@@ -498,9 +504,8 @@ class UsbHALWindows implements HALInterface {
 
       if (!_isConnecting || _disposed) return false; // cancelled by timeout
 
-      final config = isArduino
-          ? PortConfig.multisensorDefault
-          : PortConfig.sensorDefault;
+      final config =
+          isArduino ? PortConfig.multisensorDefault : PortConfig.sensorDefault;
 
       Logger.info('USB HAL: Подключение к $portName '
           '[${isArduino ? "мультидатчик 115200" : "расстояние 9600"}]');
@@ -533,8 +538,10 @@ class UsbHALWindows implements HALInterface {
         if (errMsg.contains('код 31') || errMsg.contains('не готово')) {
           _lastError = 'Устройство $portName инициализируется. '
               'Подключение повторится автоматически через несколько секунд.';
-        } else if (errMsg.contains('121') || errMsg.contains('семафор') ||
-            errMsg.contains('semaphore') || errMsg.contains('timeout')) {
+        } else if (errMsg.contains('121') ||
+            errMsg.contains('семафор') ||
+            errMsg.contains('semaphore') ||
+            errMsg.contains('timeout')) {
           _lastError = 'Драйвер порта $portName завис. '
               'Переподключите USB-кабель датчика (вытащите и вставьте обратно).';
         } else if (errMsg.contains('errno=5') || errMsg.contains('Доступ')) {
@@ -566,7 +573,8 @@ class UsbHALWindows implements HALInterface {
         _dataStartTimer?.cancel();
         _dataStartTimer = Timer(const Duration(seconds: 5), () {
           if (!_dataStartReceived && _isConnected && !_disposed) {
-            debugPrint('USB HAL: DATA_START не получен за 5с — начинаем парсинг');
+            debugPrint(
+                'USB HAL: DATA_START не получен за 5с — начинаем парсинг');
             _dataStartReceived = true;
           }
         });
@@ -612,7 +620,6 @@ class UsbHALWindows implements HALInterface {
       _connectionStatusController.add(ConnectionStatus.connected);
       Logger.info('USB HAL: Подключено к $portName');
       return true;
-
     } catch (e, stack) {
       debugPrint('USB HAL: Ошибка подключения: $e');
       debugPrint('Stack: $stack');
@@ -625,7 +632,6 @@ class UsbHALWindows implements HALInterface {
     }
   }
 
-  
   /// Запускает Timer-based polling для чтения данных из COM-порта.
   ///
   /// Использует Timer.periodic(10мс) + sp_nonblocking_read вместо
@@ -696,17 +702,20 @@ class UsbHALWindows implements HALInterface {
       }
     }
   }
-  
+
   void _startHealthCheck() {
     _healthCheckTimer?.cancel();
     _healthCheckTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       _checkConnection();
     });
   }
-  
+
   void _checkConnection() {
-    if (_disposed || !_isConnected || _isDisconnecting || _connectedPortName == null) return;
-    
+    if (_disposed ||
+        !_isConnected ||
+        _isDisconnecting ||
+        _connectedPortName == null) return;
+
     try {
       final port = _port;
       if (port == null || !port.isOpen) {
@@ -749,7 +758,7 @@ class UsbHALWindows implements HALInterface {
       _handleDisconnect();
     }
   }
-  
+
   /// Обработка отключения датчика — THREAD-SAFE (atomic port ownership)
   ///
   /// Может быть вызван из: stream onError, stream onDone, health check.
@@ -761,11 +770,11 @@ class UsbHALWindows implements HALInterface {
     // Guard against double-call from stream error + health check
     if (!_isConnected || _isDisconnecting) return;
     _isDisconnecting = true;
-    
+
     Logger.info('USB HAL: Датчик отключён ($_connectedPortName)');
     _isConnected = false;
     _connectedPortName = null;
-    
+
     // Stop all timers
     _healthCheckTimer?.cancel();
     _healthCheckTimer = null;
@@ -842,7 +851,7 @@ class UsbHALWindows implements HALInterface {
   // ═══════════════════════════════════════════════════════════
   //  DATA PROCESSING
   // ═══════════════════════════════════════════════════════════
-  
+
   void _processIncomingData(Uint8List data) {
     if (_disposed || !_isConnected || _isDisconnecting) return;
     // Feed data-flow watchdog: данные приходят → датчик жив
@@ -886,13 +895,21 @@ class UsbHALWindows implements HALInterface {
   // ═══════════════════════════════════════════════════════════
 
   static const _sensorCodeMap = {
-    'V': 'voltage', 'A': 'current', 'T': 'temperature',
-    'P': 'pressure', 'H': 'humidity',
-    'ACC': 'acceleration', 'AX': 'acceleration',
-    'AY': 'acceleration', 'AZ': 'acceleration',
-    'MAG': 'magnetic_field', 'M': 'magnetic_field',
-    'DIST': 'distance', 'F': 'force',
-    'LUX': 'lux', 'RAD': 'radiation',
+    'V': 'voltage',
+    'A': 'current',
+    'T': 'temperature',
+    'P': 'pressure',
+    'H': 'humidity',
+    'ACC': 'acceleration',
+    'AX': 'acceleration',
+    'AY': 'acceleration',
+    'AZ': 'acceleration',
+    'MAG': 'magnetic_field',
+    'M': 'magnetic_field',
+    'DIST': 'distance',
+    'F': 'force',
+    'LUX': 'lux',
+    'RAD': 'radiation',
   };
 
   /// Data field keys that are NOT sensors (metadata fields).
@@ -900,10 +917,8 @@ class UsbHALWindows implements HALInterface {
 
   void _parseSensorCapabilities(String sensorList) {
     final codes = sensorList.split(',').map((s) => s.trim()).toList();
-    final enabled = codes
-        .map((code) => _sensorCodeMap[code])
-        .whereType<String>()
-        .toList();
+    final enabled =
+        codes.map((code) => _sensorCodeMap[code]).whereType<String>().toList();
 
     if (enabled.isNotEmpty) {
       debugPrint('USB HAL: Датчики прошивки: $enabled');
@@ -947,7 +962,8 @@ class UsbHALWindows implements HALInterface {
         enabledSensors: currentSensors.toList(),
         connectionType: info.connectionType,
       );
-      debugPrint('USB HAL: Автоопределение датчиков: ${currentSensors.toList()}');
+      debugPrint(
+          'USB HAL: Автоопределение датчиков: ${currentSensors.toList()}');
     }
   }
 
@@ -986,7 +1002,8 @@ class UsbHALWindows implements HALInterface {
 
       if (line == 'DATA_START') {
         _dataStartReceived = true;
-        debugPrint('USB HAL: DATA_START получен (CRC=${_firmwareHasCrc ? "ON" : "OFF"})');
+        debugPrint(
+            'USB HAL: DATA_START получен (CRC=${_firmwareHasCrc ? "ON" : "OFF"})');
         _connectionStatusController.add(ConnectionStatus.connected);
       }
       return;
@@ -1013,7 +1030,8 @@ class UsbHALWindows implements HALInterface {
           if (actualCrc != expectedCrc) {
             _crcErrors++;
             if (_crcErrors % 10 == 1) {
-              debugPrint('USB HAL: CRC ошибка! expected=0x${crcHex.toUpperCase()} '
+              debugPrint(
+                  'USB HAL: CRC ошибка! expected=0x${crcHex.toUpperCase()} '
                   'actual=0x${actualCrc.toRadixString(16).toUpperCase()} '
                   'total=$_crcErrors');
             }
@@ -1058,7 +1076,8 @@ class UsbHALWindows implements HALInterface {
           final gap = packetN - _lastPacketN - 1;
           _lostPackets += gap;
           if (gap > 5) {
-            debugPrint('USB HAL: Потеряно $gap пакетов! (N: $_lastPacketN → $packetN)');
+            debugPrint(
+                'USB HAL: Потеряно $gap пакетов! (N: $_lastPacketN → $packetN)');
           }
         }
         _lastPacketN = packetN;
@@ -1085,7 +1104,9 @@ class UsbHALWindows implements HALInterface {
       } else {
         final baseMs = _isMeasuring && _startTimeMs > 0
             ? _startTimeMs
-            : (_connectTimeMs > 0 ? _connectTimeMs : DateTime.now().millisecondsSinceEpoch);
+            : (_connectTimeMs > 0
+                ? _connectTimeMs
+                : DateTime.now().millisecondsSinceEpoch);
         timestamp = DateTime.now().millisecondsSinceEpoch - baseMs;
       }
 
@@ -1107,7 +1128,7 @@ class UsbHALWindows implements HALInterface {
       );
 
       _sensorDataController.add(packet);
-      
+
       // Debug: every 10th packet
       if (_totalPacketsReceived % 10 == 1) {
         debugPrint('USB HAL TX: pkt#${fields['N']?.toInt()} t=${timestamp}ms '
@@ -1131,7 +1152,8 @@ class UsbHALWindows implements HALInterface {
   // ═══════════════════════════════════════════════════════════
 
   void _parseDistanceLine(String line) {
-    final regex = RegExp(r'(\d+\.?\d*)\s*(?:cm|см|mm|мм)?', caseSensitive: false);
+    final regex =
+        RegExp(r'(\d+\.?\d*)\s*(?:cm|см|mm|мм)?', caseSensitive: false);
     final match = regex.firstMatch(line);
 
     if (match != null) {
@@ -1140,22 +1162,24 @@ class UsbHALWindows implements HALInterface {
         var rawValue = double.tryParse(valueStr);
 
         if (rawValue != null) {
-          if (line.toLowerCase().contains('cm') || line.toLowerCase().contains('см')) {
+          if (line.toLowerCase().contains('cm') ||
+              line.toLowerCase().contains('см')) {
             rawValue *= 10;
           }
 
           _lastRawValue = rawValue;
 
           final calibratedValue = rawValue + _calibrationOffset;
-          final filteredValue = _distanceProcessor.process(calibratedValue);
           final baseMs = _startTimeMs > 0
               ? _startTimeMs
-              : (_connectTimeMs > 0 ? _connectTimeMs : DateTime.now().millisecondsSinceEpoch);
+              : (_connectTimeMs > 0
+                  ? _connectTimeMs
+                  : DateTime.now().millisecondsSinceEpoch);
           _timestampMs = DateTime.now().millisecondsSinceEpoch - baseMs;
 
           final packet = SensorPacket(
             timestampMs: _timestampMs,
-            distanceMm: filteredValue,
+            distanceMm: calibratedValue,
           );
 
           _totalPacketsReceived++;
@@ -1165,14 +1189,14 @@ class UsbHALWindows implements HALInterface {
       }
     }
   }
-  
+
   @override
   Future<void> disconnect() async {
     if (!_isConnected && _port == null) {
       debugPrint('USB HAL: disconnect() — уже отключены');
       return;
     }
-    
+
     // Prevent _handleDisconnect from running in parallel
     if (_isDisconnecting) {
       debugPrint('USB HAL: disconnect() — отключение уже в процессе');
@@ -1183,7 +1207,7 @@ class UsbHALWindows implements HALInterface {
 
     _isConnected = false;
     _connectedPortName = null;
-    
+
     // Stop all timers
     _healthCheckTimer?.cancel();
     _healthCheckTimer = null;
@@ -1205,7 +1229,7 @@ class UsbHALWindows implements HALInterface {
       readTimer: timer,
       port: port,
     );
-    
+
     _buffer = '';
     _timestampMs = 0;
     _startTimeMs = 0;
@@ -1215,20 +1239,19 @@ class UsbHALWindows implements HALInterface {
     _arduinoBaseTimestamp = 0;
     _lastDataReceivedAt = null;
     _deviceInfo = null;
-    
+
     _isDisconnecting = false;
-    
+
     if (!_disposed) {
       _connectionStatusController.add(ConnectionStatus.disconnected);
     }
   }
-  
+
   @override
   Future<void> startMeasurement() async {
     _buffer = '';
     _timestampMs = 0;
     _arduinoBaseTimestamp = 0;
-    _distanceProcessor.reset();
     _isMeasuring = true;
 
     if (_deviceType == IsolateDeviceType.ftdiDistance) {
@@ -1239,60 +1262,63 @@ class UsbHALWindows implements HALInterface {
 
     debugPrint('USB HAL: Измерение начато (${_deviceType.name})');
   }
-  
+
   @override
   Future<void> stopMeasurement() async {
     _isMeasuring = false;
     debugPrint('USB HAL: Измерение остановлено');
   }
-  
+
   @override
   Future<void> calibrate(String sensorId) async {
     if (_calibrationOffset != 0.0) {
       _calibrationOffset = 0.0;
-      _distanceProcessor.reset();
       debugPrint('USB HAL: Калибровка СБРОШЕНА.');
     } else {
       if (_lastRawValue > 0) {
         _calibrationOffset = -_lastRawValue;
-        _distanceProcessor.reset();
-        debugPrint('USB HAL: Калибровка нуля. Offset = ${_calibrationOffset.toStringAsFixed(1)} мм');
+        debugPrint(
+            'USB HAL: Калибровка нуля. Offset = ${_calibrationOffset.toStringAsFixed(1)} мм');
       } else {
         debugPrint('USB HAL: Нет данных для калибровки.');
       }
     }
   }
-  
+
   @override
   bool get isCalibrated => _calibrationOffset != 0.0;
-  
+
   @override
   Future<void> setSampleRate(int hz) async {
     // Sample rate is controlled by firmware
   }
-  
+
   /// Тип подключённого устройства (для UI)
   IsolateDeviceType get deviceType => _deviceType;
-  
+
   Future<void> sendCommand(String command) async {
     if (_port == null || !_port!.isOpen) return;
-    
+
     try {
       _port!.write(Uint8List.fromList('$command\n'.codeUnits));
     } catch (e) {
       debugPrint('USB HAL: Ошибка отправки команды: $e');
     }
   }
-  
+
   @override
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
     debugPrint('USB HAL: dispose()');
-    
+
     await disconnect();
-    
-    try { await _connectionStatusController.close(); } catch (_) {}
-    try { await _sensorDataController.close(); } catch (_) {}
+
+    try {
+      await _connectionStatusController.close();
+    } catch (_) {}
+    try {
+      await _sensorDataController.close();
+    } catch (_) {}
   }
 }

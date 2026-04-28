@@ -130,7 +130,8 @@ void main() {
       expect(outputs[5], greaterThan(outputs[2]));
     });
 
-    test('tracks slow monotonic movement with gaps (10mm steps with zeros)', () {
+    test('tracks slow monotonic movement with gaps (10mm steps with zeros)',
+        () {
       // Real sensor pattern: 80, 80, 90, 90, 90, 100, 100, 100, 110
       final f = OneEuroFilter(
         frequency: 10,

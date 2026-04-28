@@ -221,10 +221,9 @@ class _MainBanner extends StatelessWidget {
       ConnectionStatus.disconnected => 'Датчик не подключён',
       ConnectionStatus.connecting => 'Подключение…',
       ConnectionStatus.connected => deviceInfo?.name ?? 'Подключено',
-      ConnectionStatus.error =>
-        isMultiDevice
-            ? 'Нужно проверить подключение устройств'
-            : 'Нужно проверить подключение',
+      ConnectionStatus.error => isMultiDevice
+          ? 'Нужно проверить подключение устройств'
+          : 'Нужно проверить подключение',
     };
   }
 
@@ -236,19 +235,16 @@ class _MainBanner extends StatelessWidget {
       return 'v${deviceInfo?.firmwareVersion ?? "?"} · 🔋 ${deviceInfo?.batteryPercent ?? 0}%';
     }
     return switch (status) {
-      ConnectionStatus.disconnected =>
-        'Поиск датчиков начнётся автоматически',
-      ConnectionStatus.connecting =>
-        isMultiDevice
-            ? (deviceCount > 0
-                ? 'Подключение $deviceCount устройств…'
-                : 'Сканирование USB-портов…')
-            : 'Поиск устройства…',
+      ConnectionStatus.disconnected => 'Поиск датчиков начнётся автоматически',
+      ConnectionStatus.connecting => isMultiDevice
+          ? (deviceCount > 0
+              ? 'Подключение $deviceCount устройств…'
+              : 'Сканирование USB-портов…')
+          : 'Поиск устройства…',
       ConnectionStatus.connected => null,
-      ConnectionStatus.error =>
-        isMultiDevice && deviceCount == 0
-            ? 'USB-датчики не обнаружены'
-            : 'Соединение восстанавливается автоматически.',
+      ConnectionStatus.error => isMultiDevice && deviceCount == 0
+          ? 'USB-датчики не обнаружены'
+          : 'Соединение восстанавливается автоматически.',
     };
   }
 }
@@ -266,8 +262,8 @@ class _DeviceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = _statusColor;
     final isConnected = device.status == ConnectionStatus.connected;
-    final hasError = device.error != null &&
-        device.status != ConnectionStatus.connected;
+    final hasError =
+        device.error != null && device.status != ConnectionStatus.connected;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -591,8 +587,7 @@ class _PulseDotState extends State<_PulseDot>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color:
-                    widget.color.withValues(alpha: _animation.value * 0.5),
+                color: widget.color.withValues(alpha: _animation.value * 0.5),
                 blurRadius: widget.size * _animation.value,
                 spreadRadius: widget.size * 0.2 * _animation.value,
               ),

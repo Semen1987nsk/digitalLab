@@ -17,6 +17,7 @@ import '../../blocs/calibration/voltage_calibration_provider.dart';
 import '../../blocs/experiment/experiment_provider.dart';
 import 'stopped_review_widgets.dart';
 import '../../themes/app_theme.dart';
+import '../../widgets/sensor_icon.dart';
 
 // ═══════════════════════════════════════════════════════════════
 //  ЭКРАН ЭКСПЕРИМЕНТА
@@ -85,7 +86,8 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 24),
+            Icon(Icons.warning_amber_rounded,
+                color: AppColors.warning, size: 24),
             SizedBox(width: 10),
             Text('Запись активна'),
           ],
@@ -122,7 +124,8 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.playlist_add_rounded, color: AppColors.primary, size: 24),
+            Icon(Icons.playlist_add_rounded,
+                color: AppColors.primary, size: 24),
             SizedBox(width: 10),
             Text('Начать новую запись?'),
           ],
@@ -225,8 +228,7 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
     final shortcuts = <ShortcutActivator, Intent>{
       const SingleActivator(LogicalKeyboardKey.space):
           const _ToggleRecordingIntent(),
-      const SingleActivator(LogicalKeyboardKey.escape):
-          const _CloseIntent(),
+      const SingleActivator(LogicalKeyboardKey.escape): const _CloseIntent(),
       const SingleActivator(LogicalKeyboardKey.keyS, control: true):
           const _ExportIntent(),
       const SingleActivator(LogicalKeyboardKey.digit1):
@@ -286,211 +288,239 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
           child: Focus(
             autofocus: true,
             child: Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(sensor.icon, color: sensor.color, size: 22),
-            const SizedBox(width: 10),
-            Text(sensor.title),
-          ],
-        ),
-        actions: [
-          // Переключатель режимов
-          _ViewModeSelector(
-            mode: _viewMode,
-            color: sensor.color,
-            onChanged: (m) => setState(() => _viewMode = m),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Баннер: запись продолжается (при входе на страницу во время записи)
-          // Баннер: предупреждение о переполнении буфера
-          if (experiment.isBufferWarning)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: AppColors.warning.withValues(alpha: 0.1),
-              child: const Row(
+              appBar: AppBar(
+                title: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SensorIcon(sensor: sensor, size: 22),
+                    const SizedBox(width: 10),
+                    Text(sensor.title),
+                  ],
+                ),
+                actions: [
+                  // Переключатель режимов
+                  _ViewModeSelector(
+                    mode: _viewMode,
+                    color: sensor.color,
+                    onChanged: (m) => setState(() => _viewMode = m),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
+              body: Column(
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 18),
-                  SizedBox(width: 10),
+                  // Баннер: запись продолжается (при входе на страницу во время записи)
+                  // Баннер: предупреждение о переполнении буфера
+                  if (experiment.isBufferWarning)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              color: AppColors.warning, size: 18),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Буфер заполнен на 80%. Старые данные будут перезаписаны, но сохранены в базу.',
+                              style: TextStyle(
+                                  color: AppColors.warning, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Баннер: ошибка подключения
+                  if (!experiment.isRunning && experiment.measurementCount > 0)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.check_circle_outline,
+                              color: AppColors.primary, size: 18),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Запись завершена. Можно просматривать график, экспортировать данные или начать новую запись.',
+                              style: TextStyle(
+                                  color: AppColors.primary, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+
+                  // Баннер: ошибка подключения
+                  else if (connectionState.status == ConnectionStatus.error &&
+                      !experiment.isRunning)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline,
+                              color: AppColors.error, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              connectionState.errorMessage ??
+                                  'Ошибка подключения к датчику',
+                              style: const TextStyle(
+                                  color: AppColors.error, fontSize: 13),
+                            ),
+                          ),
+                          FilledButton.tonal(
+                            onPressed: () => ref
+                                .read(sensorConnectionProvider.notifier)
+                                .connect(),
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  AppColors.error.withValues(alpha: 0.15),
+                              foregroundColor: AppColors.error,
+                              minimumSize: const Size(0, 34),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 14),
+                            ),
+                            child: const Text('Переподключить',
+                                style: TextStyle(fontSize: 13)),
+                          ),
+                        ],
+                      ),
+                    )
+                  // Баннер: подключите датчик (если не подключён и нет ошибки)
+                  else if (!isConnected &&
+                      !experiment.isRunning &&
+                      experiment.measurementCount == 0 &&
+                      connectionState.status != ConnectionStatus.connecting)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline,
+                              color: AppColors.warning, size: 18),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Подключите датчик для получения данных',
+                              style: TextStyle(
+                                  color: AppColors.warning, fontSize: 13),
+                            ),
+                          ),
+                          FilledButton.tonal(
+                            onPressed: () => ref
+                                .read(sensorConnectionProvider.notifier)
+                                .connect(),
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  AppColors.warning.withValues(alpha: 0.15),
+                              foregroundColor: AppColors.warning,
+                              minimumSize: const Size(0, 34),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 14),
+                            ),
+                            child: const Text('Подключить',
+                                style: TextStyle(fontSize: 13)),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Панель управления
+                  _ControlBar(
+                    sensor: sensor,
+                    isRunning: experiment.isRunning,
+                    isConnected: isConnected,
+                    measurementCount: experiment.measurementCount,
+                    isCalibrated: sensor == SensorType.voltage
+                        ? calState.calibration.isModified
+                        : experiment.isCalibrated,
+                    sampleRateHz: experiment.sampleRateHz,
+                    currentValue: visibleValue,
+                    elapsedSeconds: experiment.elapsedSeconds,
+                    onStart: () => _handlePrimaryAction(
+                        controller, experiment, isConnected),
+                    onStop: () => _handlePrimaryAction(
+                        controller, experiment, isConnected),
+                    onClear: () => controller.clear(),
+                    onCalibrate: rawCurrentValue != null
+                        ? () {
+                            if (sensor == SensorType.voltage) {
+                              // Программная калибровка: quickZero через Riverpod
+                              ref
+                                  .read(voltageCalibrationProvider.notifier)
+                                  .quickZero(rawCurrentValue);
+                            } else {
+                              controller.calibrate(sensor.id);
+                            }
+                          }
+                        : null,
+                    onExport: () async {
+                      try {
+                        String path;
+                        final dbExpId = experiment.dbExperimentId;
+                        // Если данных больше чем вместилось в in-memory буфер
+                        // (эксперимент > 25 мин при 100Hz), экспортируем из SQLite
+                        // постранично — не держим всё в RAM.
+                        if (dbExpId != null &&
+                            experiment.totalMeasurements >
+                                experiment.data.length) {
+                          final db = ref.read(appDatabaseProvider);
+                          path = await ExportUtils.exportFullExperimentFromDb(
+                            db,
+                            dbExpId,
+                            sensor,
+                            voltageCalibration: voltageCalibration,
+                          );
+                        } else {
+                          path = await ExportUtils.exportToCsv(
+                            experiment.data,
+                            sensor,
+                            voltageCalibration: voltageCalibration,
+                          );
+                        }
+                        if (path.isEmpty) return;
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Данные сохранены: $path'),
+                              backgroundColor: AppColors.accent,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Ошибка экспорта: $e'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+
+                  // Контент
                   Expanded(
-                    child: Text(
-                      'Буфер заполнен на 80%. Старые данные будут перезаписаны, но сохранены в базу.',
-                      style: TextStyle(color: AppColors.warning, fontSize: 13),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: _buildContent(
+                          experiment, visibleValue, voltageCalibration),
                     ),
                   ),
                 ],
               ),
-            ),
-
-          // Баннер: ошибка подключения
-          if (!experiment.isRunning &&
-              experiment.measurementCount > 0)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: AppColors.primary.withValues(alpha: 0.1),
-              child: const Row(
-                children: [
-                  Icon(Icons.check_circle_outline, color: AppColors.primary, size: 18),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Запись завершена. Можно просматривать график, экспортировать данные или начать новую запись.',
-                      style: TextStyle(color: AppColors.primary, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            )
-
-          // Баннер: ошибка подключения
-          else if (connectionState.status == ConnectionStatus.error && !experiment.isRunning)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: AppColors.error.withValues(alpha: 0.1),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline, color: AppColors.error, size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      connectionState.errorMessage ?? 'Ошибка подключения к датчику',
-                      style: const TextStyle(color: AppColors.error, fontSize: 13),
-                    ),
-                  ),
-                  FilledButton.tonal(
-                    onPressed: () => ref.read(sensorConnectionProvider.notifier).connect(),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.error.withValues(alpha: 0.15),
-                      foregroundColor: AppColors.error,
-                      minimumSize: const Size(0, 34),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                    ),
-                    child: const Text('Переподключить', style: TextStyle(fontSize: 13)),
-                  ),
-                ],
-              ),
-            )
-          // Баннер: подключите датчик (если не подключён и нет ошибки)
-          else if (!isConnected &&
-              !experiment.isRunning &&
-              experiment.measurementCount == 0 &&
-              connectionState.status != ConnectionStatus.connecting)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: AppColors.warning.withValues(alpha: 0.1),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, color: AppColors.warning, size: 18),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Подключите датчик для получения данных',
-                      style: TextStyle(color: AppColors.warning, fontSize: 13),
-                    ),
-                  ),
-                  FilledButton.tonal(
-                    onPressed: () => ref.read(sensorConnectionProvider.notifier).connect(),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.warning.withValues(alpha: 0.15),
-                      foregroundColor: AppColors.warning,
-                      minimumSize: const Size(0, 34),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                    ),
-                    child: const Text('Подключить', style: TextStyle(fontSize: 13)),
-                  ),
-                ],
-              ),
-            ),
-
-          // Панель управления
-          _ControlBar(
-            sensor: sensor,
-            isRunning: experiment.isRunning,
-            isConnected: isConnected,
-            measurementCount: experiment.measurementCount,
-            isCalibrated: sensor == SensorType.voltage
-                ? calState.calibration.isModified
-                : experiment.isCalibrated,
-            sampleRateHz: experiment.sampleRateHz,
-            currentValue: visibleValue,
-            elapsedSeconds: experiment.elapsedSeconds,
-            onStart: () => _handlePrimaryAction(controller, experiment, isConnected),
-            onStop: () => _handlePrimaryAction(controller, experiment, isConnected),
-            onClear: () => controller.clear(),
-            onCalibrate: rawCurrentValue != null
-                ? () {
-                    if (sensor == SensorType.voltage) {
-                      // Программная калибровка: quickZero через Riverpod
-                      ref.read(voltageCalibrationProvider.notifier)
-                          .quickZero(rawCurrentValue);
-                    } else {
-                      controller.calibrate(sensor.id);
-                    }
-                  }
-                : null,
-            onExport: () async {
-              try {
-                String path;
-                final dbExpId = experiment.dbExperimentId;
-                // Если данных больше чем вместилось в in-memory буфер
-                // (эксперимент > 25 мин при 100Hz), экспортируем из SQLite
-                // постранично — не держим всё в RAM.
-                if (dbExpId != null &&
-                    experiment.totalMeasurements > experiment.data.length) {
-                  final db = ref.read(appDatabaseProvider);
-                  path = await ExportUtils.exportFullExperimentFromDb(
-                    db,
-                    dbExpId,
-                    sensor,
-                    voltageCalibration: voltageCalibration,
-                  );
-                } else {
-                  path = await ExportUtils.exportToCsv(
-                    experiment.data,
-                    sensor,
-                    voltageCalibration: voltageCalibration,
-                  );
-                }
-                if (path.isEmpty) return;
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Данные сохранены: $path'),
-                      backgroundColor: AppColors.accent,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Ошибка экспорта: $e'),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-
-          // Контент
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: _buildContent(experiment, visibleValue, voltageCalibration),
-            ),
-          ),
-        ],
-      ),
             ), // child: Scaffold
           ), // Focus
         ), // Actions
@@ -541,13 +571,17 @@ class _ExperimentPageState extends ConsumerState<ExperimentPage> {
     }
   }
 
-  Widget _buildContent(ExperimentState state, double? currentValue, VoltageCalibration? voltageCalibration) {
+  Widget _buildContent(ExperimentState state, double? currentValue,
+      VoltageCalibration? voltageCalibration) {
     final sensor = widget.sensorType;
     switch (_viewMode) {
       case ViewMode.display:
         return _BigDisplay(value: currentValue, sensor: sensor);
       case ViewMode.table:
-        return _DataTableView(data: state.data, sensor: sensor, voltageCalibration: voltageCalibration);
+        return _DataTableView(
+            data: state.data,
+            sensor: sensor,
+            voltageCalibration: voltageCalibration);
       case ViewMode.chart:
         return RepaintBoundary(
           child: _ChartView(
@@ -607,7 +641,8 @@ class _ViewModeSelector extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? color.withValues(alpha: 0.16) : Colors.transparent,
+            color:
+                isSelected ? color.withValues(alpha: 0.16) : Colors.transparent,
             borderRadius: BorderRadius.circular(11),
           ),
           child: Row(
@@ -676,8 +711,6 @@ class _ControlBar extends StatelessWidget {
         return 170;
       case SensorType.pressure:
         return 150;
-      case SensorType.radiation:
-        return 160;
       default:
         return 130;
     }
@@ -721,7 +754,8 @@ class _ControlBar extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     _ActionButton(
-                      onPressed: isRunning ? onStop : (isConnected ? onStart : null),
+                      onPressed:
+                          isRunning ? onStop : (isConnected ? onStart : null),
                       icon: primaryIcon,
                       label: primaryLabel,
                       color: isRunning ? AppColors.error : AppColors.accent,
@@ -748,7 +782,8 @@ class _ControlBar extends StatelessWidget {
                     ),
                     if (!isReviewMode)
                       _ActionButton(
-                        onPressed: isRunning || !hasRecordedData ? null : onExport,
+                        onPressed:
+                            isRunning || !hasRecordedData ? null : onExport,
                         icon: Icons.download_rounded,
                         label: 'Экспорт',
                       ),
@@ -794,7 +829,11 @@ class _SessionStatusPill extends StatelessWidget {
         ? (Icons.fiber_manual_record_rounded, 'Идёт запись', AppColors.error)
         : isReviewMode
             ? (Icons.analytics_outlined, 'Режим анализа', AppColors.primary)
-            : (Icons.play_circle_outline_rounded, 'Готов к записи', AppColors.textSecondary);
+            : (
+                Icons.play_circle_outline_rounded,
+                'Готов к записи',
+                AppColors.textSecondary
+              );
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -932,7 +971,8 @@ class _ActionButton extends StatelessWidget {
           foregroundColor: Colors.white,
           minimumSize: const Size(0, 44),
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
@@ -944,7 +984,8 @@ class _ActionButton extends StatelessWidget {
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        side: BorderSide(color: color?.withValues(alpha: 0.3) ?? AppColors.surfaceBright),
+        side: BorderSide(
+            color: color?.withValues(alpha: 0.3) ?? AppColors.surfaceBright),
       ),
     );
   }
@@ -1051,7 +1092,8 @@ class _ExperimentTimerState extends State<_ExperimentTimer>
                   color: AppColors.error.withValues(alpha: _pulseAnim.value),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.error.withValues(alpha: _pulseAnim.value * 0.5),
+                      color: AppColors.error
+                          .withValues(alpha: _pulseAnim.value * 0.5),
                       blurRadius: 6,
                       spreadRadius: 1,
                     ),
@@ -1063,9 +1105,7 @@ class _ExperimentTimerState extends State<_ExperimentTimer>
             Icon(
               Icons.timer_outlined,
               size: 16,
-              color: elapsed > 0
-                  ? AppColors.textSecondary
-                  : AppColors.textHint,
+              color: elapsed > 0 ? AppColors.textSecondary : AppColors.textHint,
             ),
           const SizedBox(width: 8),
 
@@ -1104,11 +1144,15 @@ class _BigDisplay extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(sensor.icon, size: 48, color: sensor.color.withValues(alpha: 0.5)),
+          SensorIcon(
+              sensor: sensor,
+              size: 48,
+              color: sensor.color.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Text(
             sensor.title,
-            style: const TextStyle(fontSize: 20, color: AppColors.textSecondary),
+            style:
+                const TextStyle(fontSize: 20, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 8),
           FittedBox(
@@ -1119,9 +1163,7 @@ class _BigDisplay extends StatelessWidget {
               textBaseline: TextBaseline.alphabetic,
               children: [
                 Text(
-                  value != null
-                      ? SensorUtils.formatValue(value!, sensor)
-                      : '—',
+                  value != null ? SensorUtils.formatValue(value!, sensor) : '—',
                   style: TextStyle(
                     fontSize: 120,
                     fontWeight: FontWeight.w700,
@@ -1332,7 +1374,8 @@ class _ChartViewState extends State<_ChartView> {
   }
 
   bool _canStartSelection(PointerDownEvent event) {
-    if (widget.isRunning || _interactionMode != _ChartInteractionMode.selectZoom) {
+    if (widget.isRunning ||
+        _interactionMode != _ChartInteractionMode.selectZoom) {
       return false;
     }
 
@@ -1410,8 +1453,10 @@ class _ChartViewState extends State<_ChartView> {
     }
 
     final range = maxX - minVisibleX;
-    final startFraction = ((leftDx - _chartLeftReservedPx) / chartWidth).clamp(0.0, 1.0);
-    final endFraction = ((rightDx - _chartLeftReservedPx) / chartWidth).clamp(0.0, 1.0);
+    final startFraction =
+        ((leftDx - _chartLeftReservedPx) / chartWidth).clamp(0.0, 1.0);
+    final endFraction =
+        ((rightDx - _chartLeftReservedPx) / chartWidth).clamp(0.0, 1.0);
 
     final selectedMinX = minVisibleX + range * startFraction;
     final selectedMaxX = minVisibleX + range * endFraction;
@@ -1470,7 +1515,8 @@ class _ChartViewState extends State<_ChartView> {
     });
   }
 
-  void _panByFraction(double fraction, double minVisibleX, double maxX, double maxDataTime) {
+  void _panByFraction(
+      double fraction, double minVisibleX, double maxX, double maxDataTime) {
     final currentMin = _userMinX ?? minVisibleX;
     final currentMax = _userMaxX ?? maxX;
     final range = currentMax - currentMin;
@@ -1635,11 +1681,12 @@ class _ChartViewState extends State<_ChartView> {
         dataPoints[i * 2] = spots[i].x;
         dataPoints[i * 2 + 1] = spots[i].y;
       }
-      
-      final Float64List downsampled = LTTB.downsample(dataPoints, _maxRenderPoints);
+
+      final Float64List downsampled =
+          LTTB.downsample(dataPoints, _maxRenderPoints);
       minY = double.infinity;
       maxY = double.negativeInfinity;
-      
+
       final int dsLength = downsampled.length ~/ 2;
       final dsSpots = List<FlSpot>.generate(dsLength, (i) {
         final double x = downsampled[i * 2];
@@ -1700,7 +1747,20 @@ class _ChartViewState extends State<_ChartView> {
   /// Использует расширенную последовательность: {0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60}
   /// — человеку привычны 15 и 30 (часовые деления), а не только 1-2-5.
   double _niceTimeStep(double rawStep) {
-    const steps = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 15.0, 30.0, 60.0, 120.0, 300.0];
+    const steps = [
+      0.1,
+      0.2,
+      0.5,
+      1.0,
+      2.0,
+      5.0,
+      10.0,
+      15.0,
+      30.0,
+      60.0,
+      120.0,
+      300.0
+    ];
     for (final s in steps) {
       if (s >= rawStep * 0.9) return s;
     }
@@ -1840,14 +1900,16 @@ class _ChartViewState extends State<_ChartView> {
     final chartMaxY = _snapUp(chartMaxYRaw, yStep);
     final yDecimals = _decimalPlacesForStep(yStep);
 
-    final maxDataTime = widget.data.isNotEmpty ? widget.data.last.timeSeconds : _visibleWindowSec;
-    final visibleDuration =
-      (maxX - minVisibleX)
+    final maxDataTime = widget.data.isNotEmpty
+        ? widget.data.last.timeSeconds
+        : _visibleWindowSec;
+    final visibleDuration = (maxX - minVisibleX)
         .clamp(_minWindowSec, math.max(maxDataTime, _minWindowSec).toDouble())
         .toDouble();
     final timelineScrollableExtent =
-      math.max(0.0, maxDataTime - visibleDuration).toDouble();
-    final showTimelineNavigator = !widget.isRunning && timelineScrollableExtent > 0.25;
+        math.max(0.0, maxDataTime - visibleDuration).toDouble();
+    final showTimelineNavigator =
+        !widget.isRunning && timelineScrollableExtent > 0.25;
 
     return Card(
       child: Padding(
@@ -1856,7 +1918,8 @@ class _ChartViewState extends State<_ChartView> {
           children: [
             if (!widget.isRunning)
               StoppedReviewPanel(
-                isSelectionMode: _interactionMode == _ChartInteractionMode.selectZoom,
+                isSelectionMode:
+                    _interactionMode == _ChartInteractionMode.selectZoom,
                 visibleRangeLabel:
                     'Сейчас видно: ${minVisibleX.toStringAsFixed(xDecimals)}–${maxX.toStringAsFixed(xDecimals)} с',
                 onFitAll: () => _fitAllX(maxDataTime),
@@ -1875,389 +1938,448 @@ class _ChartViewState extends State<_ChartView> {
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final double chartWidth = constraints.maxWidth - _chartLeftReservedPx;
+                        final double chartWidth =
+                            constraints.maxWidth - _chartLeftReservedPx;
 
                         return Listener(
-                    behavior: HitTestBehavior.opaque,
-                    onPointerDown: (event) {
-                      _handleSelectionPointerDown(event, chartWidth);
-                    },
-                    onPointerMove: (event) {
-                      _handleSelectionPointerMove(event, chartWidth);
-                    },
-                    onPointerUp: (event) {
-                      _handleSelectionPointerEnd(
-                        event.pointer,
-                        chartWidth,
-                        minVisibleX,
-                        maxX,
-                        maxDataTime,
-                      );
-                    },
-                    onPointerCancel: (event) {
-                      if (_selectionPointerId == event.pointer) {
-                        _clearSelectionPreview();
-                      }
-                    },
-                    onPointerSignal: (signal) {
-                      if (widget.isRunning || signal is! PointerScrollEvent) {
-                        return;
-                      }
+                          behavior: HitTestBehavior.opaque,
+                          onPointerDown: (event) {
+                            _handleSelectionPointerDown(event, chartWidth);
+                          },
+                          onPointerMove: (event) {
+                            _handleSelectionPointerMove(event, chartWidth);
+                          },
+                          onPointerUp: (event) {
+                            _handleSelectionPointerEnd(
+                              event.pointer,
+                              chartWidth,
+                              minVisibleX,
+                              maxX,
+                              maxDataTime,
+                            );
+                          },
+                          onPointerCancel: (event) {
+                            if (_selectionPointerId == event.pointer) {
+                              _clearSelectionPreview();
+                            }
+                          },
+                          onPointerSignal: (signal) {
+                            if (widget.isRunning ||
+                                signal is! PointerScrollEvent) {
+                              return;
+                            }
 
-                      final pressedKeys = HardwareKeyboard.instance.logicalKeysPressed;
-                      final isShiftPressed = pressedKeys.contains(LogicalKeyboardKey.shiftLeft) ||
-                          pressedKeys.contains(LogicalKeyboardKey.shiftRight);
-                      final isCtrlPressed = pressedKeys.contains(LogicalKeyboardKey.controlLeft) ||
-                          pressedKeys.contains(LogicalKeyboardKey.controlRight);
+                            final pressedKeys =
+                                HardwareKeyboard.instance.logicalKeysPressed;
+                            final isShiftPressed = pressedKeys
+                                    .contains(LogicalKeyboardKey.shiftLeft) ||
+                                pressedKeys
+                                    .contains(LogicalKeyboardKey.shiftRight);
+                            final isCtrlPressed = pressedKeys
+                                    .contains(LogicalKeyboardKey.controlLeft) ||
+                                pressedKeys
+                                    .contains(LogicalKeyboardKey.controlRight);
 
-                      if (isShiftPressed) {
-                        final fraction = signal.scrollDelta.dy > 0
-                            ? _panFractionStep / 2
-                            : -_panFractionStep / 2;
-                        _panByFraction(fraction, minVisibleX, maxX, maxDataTime);
-                        return;
-                      }
+                            if (isShiftPressed) {
+                              final fraction = signal.scrollDelta.dy > 0
+                                  ? _panFractionStep / 2
+                                  : -_panFractionStep / 2;
+                              _panByFraction(
+                                  fraction, minVisibleX, maxX, maxDataTime);
+                              return;
+                            }
 
-                      if (isCtrlPressed) {
-                        if (signal.scrollDelta.dy > 0) {
-                          _zoomYByFactor(_zoomFactorOut, chartMinY, chartMaxY);
-                        } else if (signal.scrollDelta.dy < 0) {
-                          _zoomYByFactor(_zoomFactorIn, chartMinY, chartMaxY);
-                        }
-                        return;
-                      }
+                            if (isCtrlPressed) {
+                              if (signal.scrollDelta.dy > 0) {
+                                _zoomYByFactor(
+                                    _zoomFactorOut, chartMinY, chartMaxY);
+                              } else if (signal.scrollDelta.dy < 0) {
+                                _zoomYByFactor(
+                                    _zoomFactorIn, chartMinY, chartMaxY);
+                              }
+                              return;
+                            }
 
-                      if (signal.scrollDelta.dy > 0) {
-                        _zoomXByFactor(_zoomFactorOut, minVisibleX, maxX, maxDataTime);
-                      } else if (signal.scrollDelta.dy < 0) {
-                        _zoomXByFactor(_zoomFactorIn, minVisibleX, maxX, maxDataTime);
-                      }
-                    },
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onDoubleTap: () {
-                        if (widget.isRunning) return;
-                        _resetView();
-                      },
-                      onHorizontalDragStart: (details) {
-                        if (widget.isRunning) return;
-                        if (_interactionMode == _ChartInteractionMode.selectZoom) {
-                          return;
-                        }
-                        _startMinX = _userMinX ?? minVisibleX;
-                        _startMaxX = _userMaxX ?? maxX;
-                      },
-                      onHorizontalDragUpdate: (details) {
-                        if (widget.isRunning) return;
-                        if (_interactionMode == _ChartInteractionMode.selectZoom) {
-                          return;
-                        }
-                        if (chartWidth <= 0) return;
+                            if (signal.scrollDelta.dy > 0) {
+                              _zoomXByFactor(_zoomFactorOut, minVisibleX, maxX,
+                                  maxDataTime);
+                            } else if (signal.scrollDelta.dy < 0) {
+                              _zoomXByFactor(_zoomFactorIn, minVisibleX, maxX,
+                                  maxDataTime);
+                            }
+                          },
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onDoubleTap: () {
+                              if (widget.isRunning) return;
+                              _resetView();
+                            },
+                            onHorizontalDragStart: (details) {
+                              if (widget.isRunning) return;
+                              if (_interactionMode ==
+                                  _ChartInteractionMode.selectZoom) {
+                                return;
+                              }
+                              _startMinX = _userMinX ?? minVisibleX;
+                              _startMaxX = _userMaxX ?? maxX;
+                            },
+                            onHorizontalDragUpdate: (details) {
+                              if (widget.isRunning) return;
+                              if (_interactionMode ==
+                                  _ChartInteractionMode.selectZoom) {
+                                return;
+                              }
+                              if (chartWidth <= 0) return;
 
-                        final currentRange = _startMaxX - _startMinX;
-                        final timeDelta = -(details.delta.dx / chartWidth) * currentRange;
-                        final clamped = _clampXWindow(
-                          minX: (_userMinX ?? _startMinX) + timeDelta,
-                          maxX: (_userMaxX ?? _startMaxX) + timeDelta,
-                          maxDataTime: math.max(maxDataTime, _minWindowSec),
-                        );
-                        setState(() {
-                          _userMinX = clamped.minX;
-                          _userMaxX = clamped.maxX;
-                        });
-                      },
-                      onHorizontalDragEnd: (_) {
-                        if (widget.isRunning) return;
-                        if (_interactionMode == _ChartInteractionMode.selectZoom) return;
-                      },
-                      onHorizontalDragCancel: () {
-                        if (_interactionMode == _ChartInteractionMode.selectZoom) {
-                          return;
-                        }
-                      },
-                      onScaleStart: (details) {
-                        if (widget.isRunning) return;
-                        if (_interactionMode == _ChartInteractionMode.selectZoom) return;
-                        _startMinX = _userMinX ?? minVisibleX;
-                        _startMaxX = _userMaxX ?? maxX;
-                        _scaleStartFocalDx = details.localFocalPoint.dx;
-                      },
-                      onScaleUpdate: (details) {
-                        if (widget.isRunning) return;
-                        final double chartWidth = constraints.maxWidth - _chartLeftReservedPx;
-                        if (chartWidth <= 0) return;
+                              final currentRange = _startMaxX - _startMinX;
+                              final timeDelta =
+                                  -(details.delta.dx / chartWidth) *
+                                      currentRange;
+                              final clamped = _clampXWindow(
+                                minX: (_userMinX ?? _startMinX) + timeDelta,
+                                maxX: (_userMaxX ?? _startMaxX) + timeDelta,
+                                maxDataTime:
+                                    math.max(maxDataTime, _minWindowSec),
+                              );
+                              setState(() {
+                                _userMinX = clamped.minX;
+                                _userMaxX = clamped.maxX;
+                              });
+                            },
+                            onHorizontalDragEnd: (_) {
+                              if (widget.isRunning) return;
+                              if (_interactionMode ==
+                                  _ChartInteractionMode.selectZoom) return;
+                            },
+                            onHorizontalDragCancel: () {
+                              if (_interactionMode ==
+                                  _ChartInteractionMode.selectZoom) {
+                                return;
+                              }
+                            },
+                            onScaleStart: (details) {
+                              if (widget.isRunning) return;
+                              if (_interactionMode ==
+                                  _ChartInteractionMode.selectZoom) return;
+                              _startMinX = _userMinX ?? minVisibleX;
+                              _startMaxX = _userMaxX ?? maxX;
+                              _scaleStartFocalDx = details.localFocalPoint.dx;
+                            },
+                            onScaleUpdate: (details) {
+                              if (widget.isRunning) return;
+                              final double chartWidth =
+                                  constraints.maxWidth - _chartLeftReservedPx;
+                              if (chartWidth <= 0) return;
 
-                        if (_interactionMode == _ChartInteractionMode.selectZoom) return;
+                              if (_interactionMode ==
+                                  _ChartInteractionMode.selectZoom) return;
 
-                        final double startRange = _startMaxX - _startMinX;
-                        final bool looksLikePan = (details.scale - 1.0).abs() < 0.02;
+                              final double startRange = _startMaxX - _startMinX;
+                              final bool looksLikePan =
+                                  (details.scale - 1.0).abs() < 0.02;
 
-                        if (looksLikePan) {
-                          final double deltaFraction =
-                              (_scaleStartFocalDx - details.localFocalPoint.dx) /
-                                  chartWidth;
-                          final clamped = _clampXWindow(
-                            minX: _startMinX + startRange * deltaFraction,
-                            maxX: _startMaxX + startRange * deltaFraction,
-                            maxDataTime: math.max(maxDataTime, _minWindowSec),
-                          );
-                          setState(() {
-                            _userMinX = clamped.minX;
-                            _userMaxX = clamped.maxX;
-                          });
-                          return;
-                        }
+                              if (looksLikePan) {
+                                final double deltaFraction =
+                                    (_scaleStartFocalDx -
+                                            details.localFocalPoint.dx) /
+                                        chartWidth;
+                                final clamped = _clampXWindow(
+                                  minX: _startMinX + startRange * deltaFraction,
+                                  maxX: _startMaxX + startRange * deltaFraction,
+                                  maxDataTime:
+                                      math.max(maxDataTime, _minWindowSec),
+                                );
+                                setState(() {
+                                  _userMinX = clamped.minX;
+                                  _userMaxX = clamped.maxX;
+                                });
+                                return;
+                              }
 
-                        double newRange = startRange / details.scale;
-                        final double safeMaxDataTime = math.max(maxDataTime, _minWindowSec);
-                        if (newRange < _minWindowSec) newRange = _minWindowSec;
-                        if (newRange > safeMaxDataTime) newRange = safeMaxDataTime;
+                              double newRange = startRange / details.scale;
+                              final double safeMaxDataTime =
+                                  math.max(maxDataTime, _minWindowSec);
+                              if (newRange < _minWindowSec)
+                                newRange = _minWindowSec;
+                              if (newRange > safeMaxDataTime)
+                                newRange = safeMaxDataTime;
 
-                        double focalX = details.localFocalPoint.dx - 48;
-                        if (focalX < 0) focalX = 0;
-                        if (focalX > chartWidth) focalX = chartWidth;
+                              double focalX = details.localFocalPoint.dx - 48;
+                              if (focalX < 0) focalX = 0;
+                              if (focalX > chartWidth) focalX = chartWidth;
 
-                        final double focalFraction = focalX / chartWidth;
-                        final double logicalFocalStart = _startMinX + startRange * focalFraction;
-                        final clamped = _clampXWindow(
-                          minX: logicalFocalStart - newRange * focalFraction,
-                          maxX: logicalFocalStart + newRange * (1 - focalFraction),
-                          maxDataTime: safeMaxDataTime,
-                        );
+                              final double focalFraction = focalX / chartWidth;
+                              final double logicalFocalStart =
+                                  _startMinX + startRange * focalFraction;
+                              final clamped = _clampXWindow(
+                                minX: logicalFocalStart -
+                                    newRange * focalFraction,
+                                maxX: logicalFocalStart +
+                                    newRange * (1 - focalFraction),
+                                maxDataTime: safeMaxDataTime,
+                              );
 
-                        setState(() {
-                          _userMinX = clamped.minX;
-                          _userMaxX = clamped.maxX;
-                        });
-                      },
-                      onScaleEnd: (_) {
-                        if (widget.isRunning) return;
-                        if (_interactionMode == _ChartInteractionMode.selectZoom) return;
-                      },
-                      child: MouseRegion(
-                        cursor: !widget.isRunning &&
-                                _interactionMode == _ChartInteractionMode.selectZoom
-                            ? SystemMouseCursors.precise
-                            : SystemMouseCursors.basic,
-                        child: Stack(
-                          clipBehavior: Clip.hardEdge,
-                          children: [
-                            LineChart(
-                              // duration: zero отключает tween-анимацию между кадрами.
-                              // (Из исследования FL Chart: lerp() создаёт полную копию данных
-                              // на каждый кадр → двойная GC-нагрузка на Celeron N4000.)
-                              duration: widget.isRunning
-                                  ? Duration.zero
-                                  : const Duration(milliseconds: 250),
-                              LineChartData(
-                                clipData: const FlClipData.all(),
-                                gridData: FlGridData(
-                                  show: true,
-                                  drawVerticalLine: true,
-                                  // Сетка привязана к тем же nice-интервалам, что и подписи →
-                                  // линии всегда совпадают с числами (Heckbert / LabVIEW / D3).
-                                  horizontalInterval: yStep,
-                                  verticalInterval: xStep,
-                                  getDrawingHorizontalLine: (_) => const FlLine(
-                                    color: AppColors.cardBorder,
-                                    strokeWidth: 0.5,
-                                  ),
-                                  getDrawingVerticalLine: (_) => const FlLine(
-                                    color: AppColors.cardBorder,
-                                    strokeWidth: 0.5,
-                                  ),
-                                ),
-                                titlesData: FlTitlesData(
-                                  bottomTitles: AxisTitles(
-                                    axisNameSize: 20,
-                                    axisNameWidget: const Text(
-                                      'Время, с',
-                                      style: TextStyle(fontSize: 11, color: AppColors.textHint),
-                                    ),
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: 24,
-                                      interval: xStep,
-                                      getTitlesWidget: (v, _) => Text(
-                                        v.toStringAsFixed(xDecimals),
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          color: AppColors.textHint,
+                              setState(() {
+                                _userMinX = clamped.minX;
+                                _userMaxX = clamped.maxX;
+                              });
+                            },
+                            onScaleEnd: (_) {
+                              if (widget.isRunning) return;
+                              if (_interactionMode ==
+                                  _ChartInteractionMode.selectZoom) return;
+                            },
+                            child: MouseRegion(
+                              cursor: !widget.isRunning &&
+                                      _interactionMode ==
+                                          _ChartInteractionMode.selectZoom
+                                  ? SystemMouseCursors.precise
+                                  : SystemMouseCursors.basic,
+                              child: Stack(
+                                clipBehavior: Clip.hardEdge,
+                                children: [
+                                  LineChart(
+                                    // duration: zero отключает tween-анимацию между кадрами.
+                                    // (Из исследования FL Chart: lerp() создаёт полную копию данных
+                                    // на каждый кадр → двойная GC-нагрузка на Celeron N4000.)
+                                    duration: widget.isRunning
+                                        ? Duration.zero
+                                        : const Duration(milliseconds: 250),
+                                    LineChartData(
+                                      clipData: const FlClipData.all(),
+                                      gridData: FlGridData(
+                                        show: true,
+                                        drawVerticalLine: true,
+                                        // Сетка привязана к тем же nice-интервалам, что и подписи →
+                                        // линии всегда совпадают с числами (Heckbert / LabVIEW / D3).
+                                        horizontalInterval: yStep,
+                                        verticalInterval: xStep,
+                                        getDrawingHorizontalLine: (_) =>
+                                            const FlLine(
+                                          color: AppColors.cardBorder,
+                                          strokeWidth: 0.5,
+                                        ),
+                                        getDrawingVerticalLine: (_) =>
+                                            const FlLine(
+                                          color: AppColors.cardBorder,
+                                          strokeWidth: 0.5,
+                                        ),
+                                      ),
+                                      titlesData: FlTitlesData(
+                                        bottomTitles: AxisTitles(
+                                          axisNameSize: 20,
+                                          axisNameWidget: const Text(
+                                            'Время, с',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.textHint),
+                                          ),
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 24,
+                                            interval: xStep,
+                                            getTitlesWidget: (v, _) => Text(
+                                              v.toStringAsFixed(xDecimals),
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                color: AppColors.textHint,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        leftTitles: AxisTitles(
+                                          axisNameSize: 24,
+                                          axisNameWidget: Text(
+                                            widget.sensor.axisLabel,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.textHint,
+                                            ),
+                                          ),
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 48,
+                                            interval: yStep,
+                                            getTitlesWidget: (v, _) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                  right: 4),
+                                              child: Text(
+                                                v.toStringAsFixed(yDecimals),
+                                                style: const TextStyle(
+                                                  fontSize: 10,
+                                                  color: AppColors.textHint,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        topTitles: const AxisTitles(
+                                          sideTitles:
+                                              SideTitles(showTitles: false),
+                                        ),
+                                        rightTitles: const AxisTitles(
+                                          sideTitles:
+                                              SideTitles(showTitles: false),
+                                        ),
+                                      ),
+                                      borderData: FlBorderData(
+                                        show: true,
+                                        border: Border.all(
+                                          color: AppColors.cardBorder,
+                                          width: 0.5,
+                                        ),
+                                      ),
+                                      minX: minVisibleX,
+                                      maxX: maxX,
+                                      minY: chartMinY,
+                                      maxY: chartMaxY,
+                                      lineBarsData: [
+                                        LineChartBarData(
+                                          spots: spots,
+                                          // Для физики важна точность формы сигнала, а не визуальное сглаживание.
+                                          // Curved-режим искажает пики/перегибы и добавляет нагрузку.
+                                          isCurved: false,
+                                          color: widget.sensor.color,
+                                          barWidth: 2,
+                                          isStrokeCapRound: true,
+                                          dotData: const FlDotData(show: false),
+                                          belowBarData: BarAreaData(
+                                            show: true,
+                                            color: widget.sensor.color
+                                                .withValues(alpha: 0.06),
+                                          ),
+                                        ),
+                                      ],
+                                      lineTouchData: LineTouchData(
+                                        enabled: !(!widget.isRunning &&
+                                            _interactionMode ==
+                                                _ChartInteractionMode
+                                                    .selectZoom),
+                                        touchTooltipData: LineTouchTooltipData(
+                                          getTooltipItems: (spots) =>
+                                              spots.map((s) {
+                                            return LineTooltipItem(
+                                              '${s.y.toStringAsFixed(widget.sensor.defaultDecimalPlaces)} ${widget.sensor.unit}\n${s.x.toStringAsFixed(2)} с',
+                                              TextStyle(
+                                                color: widget.sensor.color,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                              ),
+                                            );
+                                          }).toList(),
                                         ),
                                       ),
                                     ),
                                   ),
-                                  leftTitles: AxisTitles(
-                                    axisNameSize: 24,
-                                    axisNameWidget: Text(
-                                      widget.sensor.axisLabel,
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.textHint,
-                                      ),
-                                    ),
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      reservedSize: 48,
-                                      interval: yStep,
-                                      getTitlesWidget: (v, _) => Padding(
-                                        padding: const EdgeInsets.only(right: 4),
-                                        child: Text(
-                                          v.toStringAsFixed(yDecimals),
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            color: AppColors.textHint,
+                                  if (!widget.isRunning &&
+                                      (_hasManualXRange || _hasManualYRange))
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: Material(
+                                        color: AppColors.surfaceLight
+                                            .withValues(alpha: 0.88),
+                                        borderRadius: BorderRadius.circular(20),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: InkWell(
+                                          onTap: _resetView,
+                                          child: const Padding(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 6),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  Icons.zoom_out_map,
+                                                  size: 16,
+                                                  color: AppColors.textPrimary,
+                                                ),
+                                                SizedBox(width: 6),
+                                                Text(
+                                                  'Сбросить вид',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  topTitles: const AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                  rightTitles: const AxisTitles(
-                                    sideTitles: SideTitles(showTitles: false),
-                                  ),
-                                ),
-                                borderData: FlBorderData(
-                                  show: true,
-                                  border: Border.all(
-                                    color: AppColors.cardBorder,
-                                    width: 0.5,
-                                  ),
-                                ),
-                                minX: minVisibleX,
-                                maxX: maxX,
-                                minY: chartMinY,
-                                maxY: chartMaxY,
-                                lineBarsData: [
-                                  LineChartBarData(
-                                    spots: spots,
-                                    // Для физики важна точность формы сигнала, а не визуальное сглаживание.
-                                    // Curved-режим искажает пики/перегибы и добавляет нагрузку.
-                                    isCurved: false,
-                                    color: widget.sensor.color,
-                                    barWidth: 2,
-                                    isStrokeCapRound: true,
-                                    dotData: const FlDotData(show: false),
-                                    belowBarData: BarAreaData(
-                                      show: true,
-                                      color: widget.sensor.color.withValues(alpha: 0.06),
-                                    ),
-                                  ),
-                                ],
-                                lineTouchData: LineTouchData(
-                                  enabled: !(!widget.isRunning &&
-                                      _interactionMode ==
-                                          _ChartInteractionMode.selectZoom),
-                                  touchTooltipData: LineTouchTooltipData(
-                                    getTooltipItems: (spots) => spots.map((s) {
-                                      return LineTooltipItem(
-                                        '${s.y.toStringAsFixed(widget.sensor.defaultDecimalPlaces)} ${widget.sensor.unit}\n${s.x.toStringAsFixed(2)} с',
-                                        TextStyle(
-                                          color: widget.sensor.color,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
+                                  if (!widget.isRunning && _hasSelectionPreview)
+                                    Positioned.fill(
+                                      child: IgnorePointer(
+                                        child: Builder(
+                                          builder: (context) {
+                                            final startDx = _selectionStartDx!;
+                                            final currentDx =
+                                                _selectionCurrentDx!;
+                                            final left =
+                                                math.min(startDx, currentDx);
+                                            final width =
+                                                (startDx - currentDx).abs();
+                                            return Stack(
+                                              children: [
+                                                Positioned(
+                                                  left: left,
+                                                  top: 0,
+                                                  bottom: 0,
+                                                  width: width,
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary
+                                                          .withValues(
+                                                              alpha: 0.14),
+                                                      border: Border.all(
+                                                        color: AppColors.primary
+                                                            .withValues(
+                                                                alpha: 0.75),
+                                                        width: 1.5,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                Positioned(
+                                                  left: left,
+                                                  top: 10,
+                                                  child: Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary
+                                                          .withValues(
+                                                              alpha: 0.95),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8),
+                                                    ),
+                                                    child: const Text(
+                                                      'Отпустите мышь, чтобы приблизить участок',
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
                                         ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                            if (!widget.isRunning && (_hasManualXRange || _hasManualYRange))
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: Material(
-                                  color: AppColors.surfaceLight.withValues(alpha: 0.88),
-                                  borderRadius: BorderRadius.circular(20),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: InkWell(
-                                    onTap: _resetView,
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.zoom_out_map,
-                                            size: 16,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'Сбросить вид',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            if (!widget.isRunning && _hasSelectionPreview)
-                              Positioned.fill(
-                                child: IgnorePointer(
-                                  child: Builder(
-                                    builder: (context) {
-                                      final startDx = _selectionStartDx!;
-                                      final currentDx = _selectionCurrentDx!;
-                                      final left = math.min(startDx, currentDx);
-                                      final width = (startDx - currentDx).abs();
-                                      return Stack(
-                                        children: [
-                                          Positioned(
-                                            left: left,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: width,
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primary.withValues(alpha: 0.14),
-                                                border: Border.all(
-                                                  color: AppColors.primary.withValues(alpha: 0.75),
-                                                  width: 1.5,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            left: left,
-                                            top: 10,
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 4,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primary.withValues(alpha: 0.95),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: const Text(
-                                                'Отпустите мышь, чтобы приблизить участок',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
+                          ),
+                        );
                       },
                     ),
                   ),
@@ -2270,8 +2392,8 @@ class _ChartViewState extends State<_ChartView> {
                 totalDuration: math.max(maxDataTime, _minWindowSec).toDouble(),
                 visibleStart: minVisibleX,
                 visibleEnd: maxX,
-                onChanged: (newStart) =>
-                    _setXWindowFromStart(newStart, visibleDuration, maxDataTime),
+                onChanged: (newStart) => _setXWindowFromStart(
+                    newStart, visibleDuration, maxDataTime),
               ),
             ],
           ],
@@ -2296,7 +2418,8 @@ class _TimelineNavigator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visibleDuration = (visibleEnd - visibleStart).clamp(0.1, totalDuration);
+    final visibleDuration =
+        (visibleEnd - visibleStart).clamp(0.1, totalDuration);
     final scrollableExtent = math.max(0.0, totalDuration - visibleDuration);
 
     if (scrollableExtent <= 0) {
@@ -2343,9 +2466,12 @@ class _TimelineNavigator extends StatelessWidget {
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final trackWidth = constraints.maxWidth;
-                    final viewportWidth = math.max(36.0, trackWidth * (visibleDuration / totalDuration));
+                    final viewportWidth = math.max(
+                        36.0, trackWidth * (visibleDuration / totalDuration));
                     final travel = math.max(1.0, trackWidth - viewportWidth);
-                    final viewportLeft = (visibleStart / scrollableExtent).clamp(0.0, 1.0) * travel;
+                    final viewportLeft =
+                        (visibleStart / scrollableExtent).clamp(0.0, 1.0) *
+                            travel;
 
                     double positionToStart(double left) {
                       final normalized = (left / travel).clamp(0.0, 1.0);
@@ -2359,11 +2485,13 @@ class _TimelineNavigator extends StatelessWidget {
                     return GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTapDown: (details) {
-                        final desiredLeft = desiredLeftFromPointer(details.localPosition.dx);
+                        final desiredLeft =
+                            desiredLeftFromPointer(details.localPosition.dx);
                         onChanged(positionToStart(desiredLeft));
                       },
                       onHorizontalDragUpdate: (details) {
-                        final currentLeft = desiredLeftFromPointer(details.localPosition.dx);
+                        final currentLeft =
+                            desiredLeftFromPointer(details.localPosition.dx);
                         onChanged(positionToStart(currentLeft));
                       },
                       child: SizedBox(
@@ -2374,7 +2502,8 @@ class _TimelineNavigator extends StatelessWidget {
                             Container(
                               height: 6,
                               decoration: BoxDecoration(
-                                color: AppColors.background.withValues(alpha: 0.55),
+                                color: AppColors.background
+                                    .withValues(alpha: 0.55),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                             ),
@@ -2385,10 +2514,12 @@ class _TimelineNavigator extends StatelessWidget {
                                 width: viewportWidth,
                                 height: 16,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.18),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(999),
                                   border: Border.all(
-                                    color: AppColors.primary.withValues(alpha: 0.65),
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.65),
                                   ),
                                   boxShadow: const [
                                     BoxShadow(
@@ -2401,7 +2532,8 @@ class _TimelineNavigator extends StatelessWidget {
                                 child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.drag_indicator_rounded, size: 12, color: AppColors.primary),
+                                    Icon(Icons.drag_indicator_rounded,
+                                        size: 12, color: AppColors.primary),
                                   ],
                                 ),
                               ),
@@ -2426,7 +2558,6 @@ class _TimelineNavigator extends StatelessWidget {
   }
 }
 
-
 // ═══════════════════════════════════════════════════════════════
 //  ТАБЛИЦА ДАННЫХ
 // ═══════════════════════════════════════════════════════════════
@@ -2436,7 +2567,8 @@ class _DataTableView extends StatelessWidget {
   final SensorType sensor;
   final VoltageCalibration? voltageCalibration;
 
-  const _DataTableView({required this.data, required this.sensor, this.voltageCalibration});
+  const _DataTableView(
+      {required this.data, required this.sensor, this.voltageCalibration});
 
   @override
   Widget build(BuildContext context) {
@@ -2500,12 +2632,19 @@ class _DataTableView extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                const SizedBox(width: 48, child: Text('№', style: TextStyle(fontWeight: FontWeight.w600))),
-                const SizedBox(width: 100, child: Text('Время, с', style: TextStyle(fontWeight: FontWeight.w600))),
+                const SizedBox(
+                    width: 48,
+                    child: Text('№',
+                        style: TextStyle(fontWeight: FontWeight.w600))),
+                const SizedBox(
+                    width: 100,
+                    child: Text('Время, с',
+                        style: TextStyle(fontWeight: FontWeight.w600))),
                 Expanded(
                   child: Text(
                     '${sensor.title}, ${sensor.unit}',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: sensor.color),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600, color: sensor.color),
                   ),
                 ),
               ],
@@ -2535,7 +2674,8 @@ class _DataTableView extends StatelessWidget {
                         width: 48,
                         child: Text(
                           '$rowNum',
-                          style: const TextStyle(fontSize: 13, color: AppColors.textHint),
+                          style: const TextStyle(
+                              fontSize: 13, color: AppColors.textHint),
                         ),
                       ),
                       SizedBox(

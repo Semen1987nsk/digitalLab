@@ -81,8 +81,13 @@ class DS {
   static const Duration animNormal = Duration(milliseconds: 200);
   static const Duration animSmooth = Duration(milliseconds: 300);
   static const Duration animPulse = Duration(milliseconds: 1500);
-  static const Duration animSplash = Duration(milliseconds: 900);
-  static const Duration animSplashProgress = Duration(milliseconds: 1600);
+
+  /// Splash hero и progress-bar. Раньше было 900/1600 мс — суммарно ~2.5с,
+  /// для повторных запусков избыточно. Сейчас цель — заметный бренд-момент
+  /// без задержки: hero 600 мс, progress 850 мс параллельно, hold 180 мс.
+  /// Total ≈ 1.0 с — Apple HIG / Material допускают до 1 с для splash.
+  static const Duration animSplash = Duration(milliseconds: 600);
+  static const Duration animSplashProgress = Duration(milliseconds: 850);
 
   // ── Curves ──────────────────────────────────────────────────────
   static const Curve curveDefault = Curves.easeOutCubic;

@@ -252,8 +252,7 @@ class VoltageCalibrationNotifier
     // Валидация: gain должен быть разумным (0.1–10.0 для вольтметра)
     if (gain <= 0 || gain > 10.0) {
       state = state.copyWith(
-        error:
-            'Вычисленный коэффициент gain=${gain.toStringAsFixed(4)} '
+        error: 'Вычисленный коэффициент gain=${gain.toStringAsFixed(4)} '
             'выходит за допустимый диапазон. Проверьте опорные значения.',
       );
       return;
@@ -329,7 +328,7 @@ class VoltageCalibrationNotifier
 // ═══════════════════════════════════════════════════════════════
 
 /// Провайдер калибровки напряжения — глобальный синглтон
-final voltageCalibrationProvider = StateNotifierProvider<
-    VoltageCalibrationNotifier, VoltageCalibrationState>(
+final voltageCalibrationProvider =
+    StateNotifierProvider<VoltageCalibrationNotifier, VoltageCalibrationState>(
   (ref) => VoltageCalibrationNotifier(),
 );

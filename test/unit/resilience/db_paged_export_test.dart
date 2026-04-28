@@ -101,7 +101,8 @@ void main() {
       final paginatedAll = <MeasurementEntry>[];
       int offset = 0;
       while (true) {
-        final page = await db.measurementsPaged(expId, pageSize: 15, offset: offset);
+        final page =
+            await db.measurementsPaged(expId, pageSize: 15, offset: offset);
         if (page.isEmpty) break;
         paginatedAll.addAll(page);
         offset += page.length;
@@ -191,7 +192,8 @@ void main() {
       final page4 = await db.measurementsPaged(expId, pageSize: 30, offset: 90);
       expect(page4, hasLength(10));
 
-      final page5 = await db.measurementsPaged(expId, pageSize: 30, offset: 120);
+      final page5 =
+          await db.measurementsPaged(expId, pageSize: 30, offset: 120);
       expect(page5, isEmpty);
     });
   });

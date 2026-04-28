@@ -11,7 +11,7 @@ import 'package:digital_lab/domain/repositories/hal_interface.dart';
 class FakeHAL implements HALInterface {
   final _statusController = StreamController<ConnectionStatus>.broadcast();
   final _dataController = StreamController<SensorPacket>.broadcast();
-  
+
   bool connectCalled = false;
   bool disconnectCalled = false;
   bool startCalled = false;
@@ -27,12 +27,12 @@ class FakeHAL implements HALInterface {
 
   @override
   DeviceInfo? get deviceInfo => const DeviceInfo(
-    name: 'FakeDevice',
-    firmwareVersion: '1.0',
-    batteryPercent: 100,
-    enabledSensors: ['voltage'],
-    connectionType: ConnectionType.usb,
-  );
+        name: 'FakeDevice',
+        firmwareVersion: '1.0',
+        batteryPercent: 100,
+        enabledSensors: ['voltage'],
+        connectionType: ConnectionType.usb,
+      );
 
   @override
   bool get isCalibrated => false;
@@ -52,10 +52,14 @@ class FakeHAL implements HALInterface {
   }
 
   @override
-  Future<void> startMeasurement() async { startCalled = true; }
+  Future<void> startMeasurement() async {
+    startCalled = true;
+  }
 
   @override
-  Future<void> stopMeasurement() async { stopCalled = true; }
+  Future<void> stopMeasurement() async {
+    stopCalled = true;
+  }
 
   @override
   Future<void> calibrate(String sensorId) async {}
@@ -64,7 +68,9 @@ class FakeHAL implements HALInterface {
   Future<void> setSampleRate(int hz) async {}
 
   @override
-  Future<void> dispose() async { disposeCalled = true; }
+  Future<void> dispose() async {
+    disposeCalled = true;
+  }
 
   /// Emit a sensor packet (for testing)
   void emitPacket(SensorPacket packet) {

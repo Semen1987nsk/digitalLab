@@ -20,7 +20,7 @@ class SubjectSelectionPage extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [
               AppColors.background,
-              Color(0xFF0F1823),
+              AppColors.heroBackground,
               AppColors.surface,
             ],
           ),
@@ -44,7 +44,8 @@ class SubjectSelectionPage extends StatelessWidget {
                               .map(
                                 (subject) => _SubjectCard(
                                   subject: subject,
-                                  onTap: () => _handleSubjectTap(context, subject),
+                                  onTap: () =>
+                                      _handleSubjectTap(context, subject),
                                 ),
                               )
                               .toList(growable: false);
@@ -61,7 +62,8 @@ class SubjectSelectionPage extends StatelessWidget {
 
                           return ListView.separated(
                             itemCount: cards.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
                             itemBuilder: (_, index) => cards[index],
                           );
                         },
@@ -141,7 +143,8 @@ class _SubjectSelectionHero extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.26)),
+              border:
+                  Border.all(color: AppColors.primary.withValues(alpha: 0.26)),
             ),
             child: const Icon(
               Icons.dashboard_customize_rounded,
@@ -294,11 +297,13 @@ class _SubjectCard extends StatelessWidget {
                         color: subject.accentColor.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(subject.icon, size: 22, color: subject.accentColor),
+                      child: Icon(subject.icon,
+                          size: 22, color: subject.accentColor),
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 5),
                       decoration: BoxDecoration(
                         color: canOpen
                             ? AppColors.success.withValues(alpha: 0.12)
@@ -310,7 +315,9 @@ class _SubjectCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          color: canOpen ? AppColors.success : AppColors.textSecondary,
+                          color: canOpen
+                              ? AppColors.success
+                              : AppColors.textSecondary,
                         ),
                       ),
                     ),
@@ -355,18 +362,22 @@ class _SubjectCard extends StatelessWidget {
                               onPressed: onTap,
                               style: FilledButton.styleFrom(
                                 minimumSize: const Size(0, 40),
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
                               ),
-                              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                              icon: const Icon(Icons.arrow_forward_rounded,
+                                  size: 18),
                               label: const Text('Открыть'),
                             )
                           : OutlinedButton.icon(
                               onPressed: onTap,
                               style: OutlinedButton.styleFrom(
                                 minimumSize: const Size(0, 40),
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
                               ),
-                              icon: const Icon(Icons.visibility_outlined, size: 18),
+                              icon: const Icon(Icons.visibility_outlined,
+                                  size: 18),
                               label: const Text('Посмотреть статус'),
                             ),
                     ),

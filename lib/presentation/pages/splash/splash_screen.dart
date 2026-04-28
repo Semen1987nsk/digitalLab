@@ -17,9 +17,9 @@ class _SplashScreenState extends State<SplashScreen>
   static const _contentDuration = DS.animSplash; // 900ms
   static const _progressDuration = DS.animSplashProgress; // 1600ms
 
-  // Прогресс-бар стартует с небольшим опережением, когда hero-контент
-  // ещё въезжает — так вся анимация сливается в один кадр намерения.
-  static const _progressStartOffset = Duration(milliseconds: 120);
+  // Прогресс-бар стартует одновременно с hero-контентом — короткий splash
+  // не должен иметь дополнительных задержек.
+  static const _progressStartOffset = Duration.zero;
 
   // Пауза после завершения прогресса, прежде чем уступить место главному
   // экрану — даёт глазу «поймать» 100% прогресса.
@@ -123,7 +123,7 @@ class _SplashScreenState extends State<SplashScreen>
                 end: Alignment.bottomCenter,
                 colors: [
                   AppColors.background,
-                  Color(0xFF101722),
+                  AppColors.splashMidGradient,
                   AppColors.surface,
                 ],
               ),
@@ -213,9 +213,10 @@ class _SplashScreenState extends State<SplashScreen>
                                 child: LinearProgressIndicator(
                                   value: _progressController.value,
                                   minHeight: 6,
-                                  backgroundColor:
-                                      AppColors.surfaceLight.withValues(alpha: 0.9),
-                                  valueColor: const AlwaysStoppedAnimation<Color>(
+                                  backgroundColor: AppColors.surfaceLight
+                                      .withValues(alpha: 0.9),
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
                                     AppColors.primary,
                                   ),
                                 ),

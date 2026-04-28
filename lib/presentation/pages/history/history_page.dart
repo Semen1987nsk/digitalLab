@@ -6,6 +6,7 @@ import '../../../core/di/providers.dart';
 import '../../../data/datasources/local/app_database.dart';
 import '../../themes/app_theme.dart';
 import '../../themes/design_tokens.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/labosfera_app_bar.dart';
 
 /// Провайдер: список всех экспериментов из БД.
@@ -171,58 +172,13 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(DS.sp8),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primary.withValues(alpha: 0.15),
-                      AppColors.accent.withValues(alpha: 0.08),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Icon(
-                  Icons.science_outlined,
-                  size: 44,
-                  color: AppColors.primary.withValues(alpha: 0.9),
-                ),
-              ),
-              DSGap.h5,
-              Text(
-                'Пока нет сохранённых опытов',
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
-              ),
-              DSGap.h3,
-              Text(
-                'Начните эксперимент на главной — после остановки он автоматически сохранится сюда. Вы сможете вернуться к графику, сравнить опыты и выгрузить данные.',
-                style: TextStyle(
-                  color: palette.textSecondary,
-                  height: 1.5,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
+    return const EmptyState(
+      illustration: EmptyStateIllustration.waveform,
+      title: 'Пока нет сохранённых опытов',
+      message:
+          'Начните эксперимент на главной — после остановки он автоматически '
+          'сохранится сюда. Вы сможете вернуться к графику, сравнить опыты и '
+          'выгрузить данные.',
     );
   }
 }
@@ -353,8 +309,8 @@ class _ExperimentCardState extends State<_ExperimentCard> {
                 DSGap.w1,
                 IconButton(
                   tooltip: 'Удалить эксперимент',
-                  icon: Icon(Icons.delete_outline,
-                      color: palette.textSecondary),
+                  icon:
+                      Icon(Icons.delete_outline, color: palette.textSecondary),
                   onPressed: widget.onDelete,
                 ),
               ],
@@ -419,8 +375,7 @@ class _StatusBadge extends StatelessWidget {
       ExperimentStatus.interrupted => (AppColors.error, 'Прерван'),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(
-          horizontal: DS.sp3, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: DS.sp3, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(DS.rFull),
@@ -530,8 +485,7 @@ class _ExperimentDetailsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final duration =
-        experiment.endTime?.difference(experiment.startTime);
+    final duration = experiment.endTime?.difference(experiment.startTime);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Row(
@@ -546,8 +500,7 @@ class _ExperimentDetailsDialog extends StatelessWidget {
                 Text(_titleFor(experiment),
                     style: Theme.of(context).textTheme.titleMedium),
                 Text(
-                  DateFormat('dd.MM.yyyy · HH:mm')
-                      .format(experiment.startTime),
+                  DateFormat('dd.MM.yyyy · HH:mm').format(experiment.startTime),
                   style: Theme.of(context)
                       .textTheme
                       .bodySmall
@@ -589,8 +542,7 @@ class _ExperimentDetailsDialog extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.info.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(DS.rMd),
-              border: Border.all(
-                  color: AppColors.info.withValues(alpha: 0.25)),
+              border: Border.all(color: AppColors.info.withValues(alpha: 0.25)),
             ),
             child: const Row(
               children: [

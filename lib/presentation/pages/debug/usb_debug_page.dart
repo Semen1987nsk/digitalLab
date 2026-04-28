@@ -183,12 +183,10 @@ class _UsbDebugPageState extends State<UsbDebugPage> {
                 RegExp(r'VID_([0-9A-Fa-f]{4})').firstMatch(lastKey);
             final pidMatch =
                 RegExp(r'PID_([0-9A-Fa-f]{4})').firstMatch(lastKey);
-            final vid = vidMatch != null
-                ? int.parse(vidMatch.group(1)!, radix: 16)
-                : 0;
-            final pid = pidMatch != null
-                ? int.parse(pidMatch.group(1)!, radix: 16)
-                : 0;
+            final vid =
+                vidMatch != null ? int.parse(vidMatch.group(1)!, radix: 16) : 0;
+            final pid =
+                pidMatch != null ? int.parse(pidMatch.group(1)!, radix: 16) : 0;
             if (vid != 0) usbMap[portName] = (vid, pid);
           }
         }
@@ -568,8 +566,9 @@ class _UsbDebugPageState extends State<UsbDebugPage> {
                       ),
                     )
                     .toList(),
-                onChanged:
-                    _isConnected ? null : (v) => setState(() => _selectedPort = v),
+                onChanged: _isConnected
+                    ? null
+                    : (v) => setState(() => _selectedPort = v),
               ),
             ),
             const SizedBox(width: 16),
@@ -643,9 +642,7 @@ class _UsbDebugPageState extends State<UsbDebugPage> {
             child: _data.isEmpty
                 ? Center(
                     child: Text(
-                      _isConnected
-                          ? 'Ожидание данных...'
-                          : 'Подключите датчик',
+                      _isConnected ? 'Ожидание данных...' : 'Подключите датчик',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.3),
                       ),

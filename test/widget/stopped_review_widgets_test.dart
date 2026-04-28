@@ -9,7 +9,8 @@ Widget _wrap(Widget child) {
 }
 
 void main() {
-  testWidgets('StoppedReviewPanel shows school-friendly primary actions by default', (
+  testWidgets(
+      'StoppedReviewPanel shows school-friendly primary actions by default', (
     tester,
   ) async {
     var fitAllTapped = 0;
@@ -70,7 +71,8 @@ void main() {
     expect(find.text('Отменить выделение'), findsOneWidget);
     expect(find.text('Авто Y'), findsOneWidget);
     expect(find.text('Точный режим'), findsNothing);
-    expect(find.text('Проведите по графику, чтобы приблизить нужный участок.'), findsOneWidget);
+    expect(find.text('Проведите по графику, чтобы приблизить нужный участок.'),
+        findsOneWidget);
 
     await tester.tap(find.text('Отменить выделение'));
     await tester.pump();

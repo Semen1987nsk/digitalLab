@@ -10,13 +10,15 @@ import '../../domain/repositories/hal_interface.dart';
 /// Базовые: V, A, P, T, Acc(xyz), Mag
 /// 360: Distance, Force, Lux
 class MockHAL implements HALInterface {
-  final _connectionStatusController = StreamController<ConnectionStatus>.broadcast();
+  final _connectionStatusController =
+      StreamController<ConnectionStatus>.broadcast();
   final _sensorDataController = StreamController<SensorPacket>.broadcast();
 
   Timer? _measurementTimer;
   final _rng = Random();
   int _timestampMs = 0;
   int _sampleRateHz = 10;
+
   /// Флаг: идёт ли формальное измерение (эксперимент).
   /// Данные генерируются всегда (для превью), но timestamps
   /// обнуляются при start/stop.
@@ -32,7 +34,8 @@ class MockHAL implements HALInterface {
   DeviceInfo? _deviceInfo;
 
   @override
-  Stream<ConnectionStatus> get connectionStatus => _connectionStatusController.stream;
+  Stream<ConnectionStatus> get connectionStatus =>
+      _connectionStatusController.stream;
 
   @override
   Stream<SensorPacket> get sensorData => _sensorDataController.stream;
@@ -54,9 +57,16 @@ class MockHAL implements HALInterface {
       firmwareVersion: '2.0.0-dev',
       batteryPercent: 87,
       enabledSensors: [
-        'voltage', 'current', 'pressure', 'temperature',
-        'acceleration', 'magnetic_field',
-        'distance', 'force', 'lux', 'radiation',
+        'voltage',
+        'current',
+        'pressure',
+        'temperature',
+        'acceleration',
+        'magnetic_field',
+        'distance',
+        'force',
+        'lux',
+        'radiation',
       ],
       connectionType: ConnectionType.mock,
     );
@@ -143,7 +153,8 @@ class MockHAL implements HALInterface {
 
     // Отладочный вывод каждые 5 секунд
     if (_timestampMs % 5000 < (1000 / _sampleRateHz).round() + 1) {
-      debugPrint('Mock HAL: генерация данных, t=${_timestampMs}ms, phase=${_phase.toStringAsFixed(2)}');
+      debugPrint(
+          'Mock HAL: генерация данных, t=${_timestampMs}ms, phase=${_phase.toStringAsFixed(2)}');
     }
 
     // ── Базовые датчики ──────────────────────────────────────

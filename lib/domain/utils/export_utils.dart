@@ -17,14 +17,15 @@ class ExportUtils {
     if (data.isEmpty) return '';
 
     final List<List<dynamic>> rows = [];
-    
+
     // Заголовок
     rows.add(['Время (с)', '${sensor.axisLabel} (${sensor.unit})']);
 
     // Данные (с учётом калибровки)
     for (final packet in data) {
       final value = SensorUtils.getCalibratedValue(
-        packet, sensor,
+        packet,
+        sensor,
         voltageCalibration: voltageCalibration,
       );
       if (value != null) {
@@ -35,7 +36,8 @@ class ExportUtils {
       }
     }
 
-    final String csv = const ListToCsvConverter(fieldDelimiter: ';').convert(rows);
+    final String csv =
+        const ListToCsvConverter(fieldDelimiter: ';').convert(rows);
 
     // UTF-8 BOM — без него Excel на Windows открывает кириллицу как кракозябры.
     // BOM безвреден для других программ (LibreOffice, Google Sheets, Python/pandas).
@@ -53,9 +55,11 @@ class ExportUtils {
       throw Exception('Не удалось получить директорию для сохранения');
     }
 
-    final String timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    final String timestamp =
+        DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
     final String fileName = 'Эксперимент_${sensor.name}_$timestamp.csv';
-    final String filePath = '${directory.path}${Platform.pathSeparator}$fileName';
+    final String filePath =
+        '${directory.path}${Platform.pathSeparator}$fileName';
 
     final File file = File(filePath);
     await file.writeAsString('$utf8Bom$csv');
@@ -110,7 +114,9 @@ class ExportUtils {
     const converter = ListToCsvConverter(fieldDelimiter: ';');
     sink.write(utf8Bom);
     sink.writeln(converter.convert(
-      [['Время (с)', '${sensor.axisLabel} (${sensor.unit})']],
+      [
+        ['Время (с)', '${sensor.axisLabel} (${sensor.unit})']
+      ],
     ));
 
     // 3. Постраничная выгрузка: читаем [pageSize] строк → пишем → освобождаем
@@ -127,7 +133,8 @@ class ExportUtils {
       for (final row in page) {
         final packet = _measurementToPacket(row);
         final value = SensorUtils.getCalibratedValue(
-          packet, sensor,
+          packet,
+          sensor,
           voltageCalibration: voltageCalibration,
         );
         if (value != null) {

@@ -5,44 +5,11 @@ import 'package:digital_lab/domain/math/signal_processor.dart';
 void main() {
   group('SignalProcessor', () {
     test('returns raw value when disabled', () {
-      final processor = SignalProcessor(sensorType: SensorType.distance);
+      final processor = SignalProcessor(sensorType: SensorType.voltage);
       processor.enabled = false;
 
       final result = processor.process(999.0);
       expect(result, equals(999.0));
-    });
-
-    test('filters noisy distance data', () {
-      final processor = SignalProcessor(sensorType: SensorType.distance);
-
-      // Feed several consistent values then check smoothing
-      double result = 0;
-      for (int i = 0; i < 20; i++) {
-        result = processor.process(100.0);
-      }
-
-      // After many identical values, output should converge
-      expect(result, closeTo(100.0, 5.0));
-    });
-
-    test('removes outliers from distance data', () {
-      final processor = SignalProcessor(sensorType: SensorType.distance);
-
-      // Build up stable baseline
-      for (int i = 0; i < 10; i++) {
-        processor.process(100.0);
-      }
-
-      // Inject outlier (9999mm — way beyond maxDelta=500mm)
-      // SpikeGuard holds first spike, returns lastValid
-      final afterOutlier = processor.process(9999.0);
-
-      // SpikeGuard returns last valid (≈100mm), not the spike
-      expect(afterOutlier, lessThan(200.0));
-
-      // Normal value after spike — SpikeGuard resets pending
-      final afterRecovery = processor.process(100.0);
-      expect(afterRecovery, closeTo(100.0, 5.0));
     });
 
     test('temperature filters converge slowly', () {
@@ -60,7 +27,8 @@ void main() {
         lastValue = processor.process(25.0);
       }
       expect(lastValue, lessThan(25.0)); // Should not immediately reach 25
-      expect(lastValue, greaterThan(20.0)); // But should start moving after 10 samples
+      expect(lastValue,
+          greaterThan(20.0)); // But should start moving after 10 samples
     });
 
     test('reset returns processor to initial state', () {
