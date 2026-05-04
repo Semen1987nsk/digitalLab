@@ -22,20 +22,92 @@ import '../ble/ble_scan_provider.dart';
 /// Режим подключения
 enum HalMode { mock, usb, ble }
 
-/// Текущий режим HAL
-/// По умолчанию USB на десктопе (школьный ПК), Mock на мобилке.
-/// Переключается через UI: USB (COM), Bluetooth, Симуляция.
-final halModeProvider = StateProvider<HalMode>((ref) {
-  // Desktop = USB (основной сценарий — школа + датчик по USB)
-  // Mobile = Mock (для демонстрации без железа)
-  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    return HalMode.usb;
-  }
-  return HalMode.mock;
-});
+/// Снимок настроек HAL — режим + выбранный порт.
+///
+/// Иммутабельный объект; меняется только через [HalSettingsNotifier], который
+/// блокирует изменения во время активной записи эксперимента.
+class HalSettings {
+  final HalMode mode;
+  final String? selectedPort;
+  const HalSettings({required this.mode, this.selectedPort});
 
-/// Выбранный COM-порт (null = автовыбор)
-final selectedPortProvider = StateProvider<String?>((ref) => null);
+  HalSettings copyWith({HalMode? mode, Object? selectedPort = _sentinel}) =>
+      HalSettings(
+        mode: mode ?? this.mode,
+        selectedPort: identical(selectedPort, _sentinel)
+            ? this.selectedPort
+            : selectedPort as String?,
+      );
+
+  static const Object _sentinel = Object();
+}
+
+/// Единая точка изменения настроек HAL.
+///
+/// Раньше [halModeProvider] и [selectedPortProvider] были `StateProvider`,
+/// и любое присваивание `state = X` из UI пересоздавало [halProvider] —
+/// в том числе ВО ВРЕМЯ ЗАПИСИ ЭКСПЕРИМЕНТА: старый HAL уничтожался,
+/// поток данных обрывался, незавершённый эксперимент терялся.
+///
+/// Теперь смена идёт только через методы этого Notifier'а, которые читают
+/// `experimentControllerProvider.isRunning` и отказываются менять state,
+/// пока запись идёт. UI получает `false` и должен показать пользователю
+/// сообщение «Сначала остановите запись».
+class HalSettingsNotifier extends Notifier<HalSettings> {
+  @override
+  HalSettings build() {
+    final mode = (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
+        ? HalMode.usb
+        : HalMode.mock;
+    return HalSettings(mode: mode);
+  }
+
+  /// Возвращает `false`, если эксперимент идёт.
+  bool setMode(HalMode mode) {
+    if (mode == state.mode) return true;
+    if (_isExperimentRunning()) {
+      debugPrint('halSettings: смена режима заблокирована — идёт запись');
+      return false;
+    }
+    state = state.copyWith(mode: mode);
+    return true;
+  }
+
+  bool setSelectedPort(String? port) {
+    if (port == state.selectedPort) return true;
+    if (_isExperimentRunning()) {
+      debugPrint('halSettings: смена порта заблокирована — идёт запись');
+      return false;
+    }
+    state = state.copyWith(selectedPort: port);
+    return true;
+  }
+
+  bool _isExperimentRunning() {
+    try {
+      return ref.read(experimentControllerProvider).isRunning;
+    } catch (_) {
+      // experimentController ещё не инициализирован (стартовая фаза).
+      return false;
+    }
+  }
+}
+
+final halSettingsProvider = NotifierProvider<HalSettingsNotifier, HalSettings>(
+  HalSettingsNotifier.new,
+);
+
+/// Read-only обёртка над режимом HAL. Запись теперь только через
+/// `ref.read(halSettingsProvider.notifier).setMode(...)`.
+final halModeProvider = Provider<HalMode>(
+  (ref) => ref.watch(halSettingsProvider.select((s) => s.mode)),
+);
+
+/// Read-only обёртка над выбранным COM-портом. Запись только через
+/// `ref.read(halSettingsProvider.notifier).setSelectedPort(...)`.
+final selectedPortProvider = Provider<String?>(
+  (ref) => ref.watch(halSettingsProvider.select((s) => s.selectedPort)),
+);
 
 /// Все датчики приложения — одна унифицированная версия продукта.
 final availableSensorsProvider = Provider<List<SensorType>>((ref) {

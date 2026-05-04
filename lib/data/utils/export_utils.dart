@@ -2,11 +2,11 @@ import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
-import '../../data/datasources/local/app_database.dart';
-import '../entities/calibration_data.dart';
-import '../entities/sensor_data.dart';
-import '../entities/sensor_type.dart';
-import 'sensor_utils.dart';
+import '../datasources/local/app_database.dart';
+import '../../domain/entities/calibration_data.dart';
+import '../../domain/entities/sensor_data.dart';
+import '../../domain/entities/sensor_type.dart';
+import '../../domain/utils/sensor_utils.dart';
 
 class ExportUtils {
   static Future<String> exportToCsv(
@@ -41,7 +41,7 @@ class ExportUtils {
 
     // UTF-8 BOM — без него Excel на Windows открывает кириллицу как кракозябры.
     // BOM безвреден для других программ (LibreOffice, Google Sheets, Python/pandas).
-    const String utf8Bom = '\uFEFF';
+    const String utf8Bom = '﻿';
 
     // Получаем директорию для сохранения
     Directory? directory;
@@ -110,7 +110,7 @@ class ExportUtils {
     final sink = file.openWrite();
 
     // UTF-8 BOM + заголовок
-    const utf8Bom = '\uFEFF';
+    const utf8Bom = '﻿';
     const converter = ListToCsvConverter(fieldDelimiter: ';');
     sink.write(utf8Bom);
     sink.writeln(converter.convert(

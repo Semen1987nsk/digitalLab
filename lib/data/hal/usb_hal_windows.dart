@@ -714,7 +714,9 @@ class UsbHALWindows implements HALInterface {
     if (_disposed ||
         !_isConnected ||
         _isDisconnecting ||
-        _connectedPortName == null) return;
+        _connectedPortName == null) {
+      return;
+    }
 
     try {
       final port = _port;

@@ -134,6 +134,12 @@ class PortConnectionManager {
   /// event loop. `reg query` takes <10ms and is NOT FFI — no Isolate needed.
   /// Zero Isolates created overnight. Problem eliminated.
   static Future<List<DetectedPort>?> scanPorts() async {
+    // Windows-only: реализация опирается на `reg query` к HKLM. На других
+    // платформах (Android/iOS/Linux/macOS) возвращаем пустой список вместо
+    // запуска несуществующего процесса reg.exe → пустой результат и тихий
+    // фолбек к BLE/Mock без исключений.
+    if (!Platform.isWindows) return const <DetectedPort>[];
+
     try {
       final rawPorts = await enumeratePortsAsync().timeout(
         const Duration(seconds: 5),
@@ -184,6 +190,10 @@ class PortConnectionManager {
     bool skipLegacyPorts = true,
   }) async {
     final results = <(String, int, int)>[];
+
+    // Guard: вся логика ниже опирается на Windows Registry (HKLM) и reg.exe.
+    // На других платформах нет смысла даже запускать процесс — пустой список.
+    if (!Platform.isWindows) return results;
 
     // ── Step 1: Active COM ports from SERIALCOMM registry ──
     final Set<String> activePorts;

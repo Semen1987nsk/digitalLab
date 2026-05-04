@@ -45,8 +45,18 @@ class SettingsPage extends ConsumerWidget {
             subtitle: 'Откуда приложение получает данные от датчика',
             child: _HalModeSelector(
               current: halMode,
-              onChanged: (mode) =>
-                  ref.read(halModeProvider.notifier).state = mode,
+              onChanged: (mode) {
+                final ok = ref.read(halSettingsProvider.notifier).setMode(mode);
+                if (!ok && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Сначала остановите запись эксперимента',
+                      ),
+                    ),
+                  );
+                }
+              },
             ),
           ),
           DSGap.h4,

@@ -109,9 +109,21 @@ class HomePage extends ConsumerWidget {
             MaterialPageRoute(
               builder: (_) => PortSelectionPage(
                 onPortSelected: (portName) {
-                  ref.read(selectedPortProvider.notifier).state = portName;
+                  final ok = ref
+                      .read(halSettingsProvider.notifier)
+                      .setSelectedPort(portName);
                   Navigator.pop(context);
-                  ref.read(sensorConnectionProvider.notifier).connect();
+                  if (ok) {
+                    ref.read(sensorConnectionProvider.notifier).connect();
+                  } else if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Сначала остановите запись эксперимента',
+                        ),
+                      ),
+                    );
+                  }
                 },
               ),
             ),
@@ -206,8 +218,19 @@ class _ConnectionModeSelector extends ConsumerWidget {
               ),
             ],
             selected: {mode},
-            onSelectionChanged: (s) =>
-                ref.read(halModeProvider.notifier).state = s.first,
+            onSelectionChanged: (s) {
+              final ok =
+                  ref.read(halSettingsProvider.notifier).setMode(s.first);
+              if (!ok && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Сначала остановите запись эксперимента',
+                    ),
+                  ),
+                );
+              }
+            },
             style: const ButtonStyle(
               visualDensity: VisualDensity.compact,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

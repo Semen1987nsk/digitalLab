@@ -214,14 +214,27 @@ class _BleDevicePageState extends ConsumerState<BleDevicePage> {
     // Сохраняем выбранное устройство
     ref.read(selectedBleDeviceProvider.notifier).state = result.device;
 
-    // Переключаемся на BLE режим
-    ref.read(halModeProvider.notifier).state = HalMode.ble;
+    // Переключаемся на BLE режим. Если идёт запись — отказ + сообщение.
+    final ok = ref.read(halSettingsProvider.notifier).setMode(HalMode.ble);
 
     if (!mounted) return;
     Navigator.pop(context);
 
+    if (!ok) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Сначала остановите запись эксперимента',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
     // Подключаемся через провайдер подключения
-    // (halProvider пересоздастся при смене halModeProvider)
+    // (halProvider пересоздастся при смене режима через halSettingsProvider).
     await Future.delayed(const Duration(milliseconds: 100));
     ref.read(sensorConnectionProvider.notifier).connect();
   }

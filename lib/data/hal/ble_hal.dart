@@ -133,6 +133,14 @@ class BleHAL implements HALInterface {
   static const int _maxReconnectAttempts = 10;
   bool _isConnecting = false;
   bool _isRecoveringDataStall = false;
+
+  /// Счётчик последовательных watchdog-recover'ов БЕЗ восстановления потока данных.
+  /// Без отдельного счётчика [_recoverFromDataStall] вызывает [connect], а тот
+  /// сбрасывает [_reconnectAttempts] до нуля → возможен бесконечный цикл успешных
+  /// reconnect'ов без получения данных. Лимит обрывает цикл и переводит HAL в error.
+  int _stallRecoveryCount = 0;
+  static const int _maxStallRecoveryAttempts = 3;
+
   DateTime? _lastDataAt;
   Timer? _dataWatchdogTimer;
   Timer? _reconnectTimer; // отменяемый таймер переподключения
@@ -445,6 +453,9 @@ class BleHAL implements HALInterface {
         try {
           if (value.isEmpty) return;
           _lastDataAt = DateTime.now();
+          // Поток данных живой → сбрасываем счётчик watchdog-recover'ов,
+          // чтобы лимит срабатывал только на ПОДРЯД идущих сбоях.
+          _stallRecoveryCount = 0;
 
           // Отправляем сырые байты в фоновый Isolate для парсинга
           _dataIsolate.processRawData(Uint8List.fromList(value));
@@ -589,6 +600,17 @@ class BleHAL implements HALInterface {
 
   void _recoverFromDataStall() {
     if (_isRecoveringDataStall || _disposed) return;
+
+    if (_stallRecoveryCount >= _maxStallRecoveryAttempts) {
+      debugPrint(
+          'BLE HAL: Watchdog: достигнут лимит soft-reconnect ($_maxStallRecoveryAttempts) '
+          'без восстановления потока данных. Перевод в error, '
+          'требуется ручной "Переподключить".');
+      _connectionStatusController.add(ConnectionStatus.error);
+      _stopDataWatchdog();
+      return;
+    }
+    _stallRecoveryCount++;
     _isRecoveringDataStall = true;
 
     unawaited(() async {
